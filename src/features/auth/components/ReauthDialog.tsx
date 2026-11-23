@@ -3,6 +3,7 @@ import { on } from '@/shared/api/events';
 import { isReauthPending, rejectReauth, resolveReauth } from '@/shared/api/reauth-coordinator';
 import { messageFor } from '@/shared/form/error-messages';
 import { isProblem } from '@/shared/api/errors';
+import { sessionStore } from '@/shared/auth/session-store';
 import { Button, Dialog, PasswordField } from '@/shared/ui';
 import { useReauth } from '../hooks/use-reauth';
 
@@ -32,10 +33,22 @@ export function ReauthDialog() {
     [],
   );
 
-  // The bridge already rejects the prompt and signs out; just take the modal down.
+  // The bridge rejects the prompt too, but returns early when already anonymous; never rely on it.
   useEffect(
     () =>
       on('session:expired', () => {
+        if (isReauthPending()) rejectReauth();
+        close();
+      }),
+    [close],
+  );
+
+  // Any path to anonymous (logout, revoking the current session, the bridge) ends the prompt.
+  useEffect(
+    () =>
+      sessionStore.subscribe(() => {
+        if (sessionStore.get().status !== 'anonymous') return;
+        if (isReauthPending()) rejectReauth();
         close();
       }),
     [close],

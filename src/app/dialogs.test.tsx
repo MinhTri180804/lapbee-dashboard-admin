@@ -4,6 +4,7 @@ import { http } from 'msw';
 import { describe, expect, it, vi } from 'vitest';
 import { emit } from '@/shared/api/events';
 import { isReauthPending, waitForReauth } from '@/shared/api/reauth-coordinator';
+import { sessionStore } from '@/shared/auth/session-store';
 import { problem } from '@/test/msw/problem';
 import { server } from '@/test/msw/server';
 import { renderWithProviders } from '@/test/render';
@@ -117,6 +118,43 @@ describe('ReauthDialog', () => {
     });
   });
 
+  it('rejects and closes when session:expired arrives while already anonymous', async () => {
+    // No session: the bridge returns early on session:expired, so the dialog must reject.
+    renderWithProviders(<p>page</p>, { route: '/posts' });
+    let spies!: ReturnType<typeof openReauth>;
+    act(() => {
+      spies = openReauth();
+    });
+    await screen.findByRole('dialog', { name: 'Xác nhận mật khẩu' });
+    act(() => {
+      emit('session:expired');
+    });
+    await waitFor(() => {
+      expect(spies.onRejected).toHaveBeenCalled();
+    });
+    expect(isReauthPending()).toBe(false);
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('rejects and closes when the session ends by another path (logout, revoke)', async () => {
+    renderWithProviders(<p>page</p>, { route: '/posts', session: {} });
+    let spies!: ReturnType<typeof openReauth>;
+    act(() => {
+      spies = openReauth();
+    });
+    await screen.findByRole('dialog', { name: 'Xác nhận mật khẩu' });
+    act(() => {
+      sessionStore.signOut();
+    });
+    await waitFor(() => {
+      expect(spies.onRejected).toHaveBeenCalled();
+    });
+    expect(isReauthPending()).toBe(false);
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+  });
+
   it('reopens with an empty field and no error', async () => {
     server.use(http.post(URL, () => problem(401, 'INVALID_CREDENTIALS')));
     const user = userEvent.setup();
@@ -166,6 +204,43 @@ describe('ConflictDialog', () => {
     await user.click(screen.getByRole('button', { name: 'Tải lại' }));
     expect(spy).toHaveBeenCalledWith({ queryKey: ['x'] });
     expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('a second conflict while open merges invalidates, deduped', async () => {
+    const user = userEvent.setup();
+    const { queryClient } = renderWithProviders(<p>page</p>, { session: {} });
+    const spy = vi.spyOn(queryClient, 'invalidateQueries');
+    act(() => {
+      emit('conflict', { invalidates: [['posts', 'p1']] });
+    });
+    await screen.findByRole('dialog', { name: 'Dữ liệu đã thay đổi ở nơi khác' });
+    act(() => {
+      emit('conflict', { invalidates: [['categories'], ['posts', 'p1']] });
+    });
+    act(() => {
+      emit('conflict', { invalidates: [['tags']] });
+    });
+    await user.click(screen.getByRole('button', { name: 'Tải lại' }));
+    expect(spy).toHaveBeenCalledTimes(3);
+    expect(spy).toHaveBeenCalledWith({ queryKey: ['posts', 'p1'] });
+    expect(spy).toHaveBeenCalledWith({ queryKey: ['categories'] });
+    expect(spy).toHaveBeenCalledWith({ queryKey: ['tags'] });
+  });
+
+  it('starts from a clean list after closing', async () => {
+    const user = userEvent.setup();
+    const { queryClient } = renderWithProviders(<p>page</p>, { session: {} });
+    const spy = vi.spyOn(queryClient, 'invalidateQueries');
+    act(() => {
+      emit('conflict', { invalidates: [['a']] });
+    });
+    await user.click(await screen.findByRole('button', { name: 'Để sau' }));
+    act(() => {
+      emit('conflict', { invalidates: [['b']] });
+    });
+    await user.click(await screen.findByRole('button', { name: 'Tải lại' }));
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spy).toHaveBeenCalledWith({ queryKey: ['b'] });
   });
 
   it('Để sau closes without invalidating', async () => {

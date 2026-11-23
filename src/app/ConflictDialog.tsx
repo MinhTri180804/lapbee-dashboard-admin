@@ -4,24 +4,40 @@ import { on } from '@/shared/api/events';
 import { Button, Dialog } from '@/shared/ui';
 
 type Keys = readonly (readonly unknown[])[];
+type State = { open: boolean; invalidates: Keys };
+
+/** Union of two key lists, deduped by JSON.stringify of each key, first occurrence kept. */
+function mergeKeys(a: Keys, b: Keys): Keys {
+  const seen = new Set<string>();
+  const out: (readonly unknown[])[] = [];
+  for (const key of [...a, ...b]) {
+    const id = JSON.stringify(key);
+    if (seen.has(id)) continue;
+    seen.add(id);
+    out.push(key);
+  }
+  return out;
+}
 
 /** Version-conflict prompt (spec §8.4). Mounted once; opens on `conflict`. */
 export function ConflictDialog() {
   const queryClient = useQueryClient();
-  const [open, setOpen] = useState(false);
-  const [invalidates, setInvalidates] = useState<Keys>([]);
+  const [{ open, invalidates }, setState] = useState<State>({ open: false, invalidates: [] });
 
   useEffect(
     () =>
       on('conflict', (e) => {
-        setInvalidates(e.invalidates);
-        setOpen(true);
+        // A second conflict while open adds its keys; "Tải lại" must refresh all of them.
+        setState((prev) => ({
+          open: true,
+          invalidates: prev.open ? mergeKeys(prev.invalidates, e.invalidates) : e.invalidates,
+        }));
       }),
     [],
   );
 
   const close = () => {
-    setOpen(false);
+    setState({ open: false, invalidates: [] });
   };
 
   const reload = () => {

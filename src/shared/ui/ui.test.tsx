@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useForm } from 'react-hook-form';
 import { useState } from 'react';
@@ -217,6 +217,19 @@ describe('Dialog', () => {
       expect(screen.queryByRole('dialog', { name: 'T' })).toBeNull();
     });
     await new Promise((r) => setTimeout(r, 20));
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it('has an Đóng (✕) button in the header that calls onClose', async () => {
+    const onClose = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <Dialog open title="T" onClose={onClose}>
+        x
+      </Dialog>,
+    );
+    const dialog = screen.getByRole('dialog', { name: 'T' });
+    await user.click(within(dialog).getByRole('button', { name: 'Đóng' }));
     expect(onClose).toHaveBeenCalledOnce();
   });
 

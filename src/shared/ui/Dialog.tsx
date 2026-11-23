@@ -1,5 +1,7 @@
 import { useEffect, useId, useRef } from 'react';
 import type { ReactNode } from 'react';
+import { X } from 'lucide-react';
+import { IconButton } from './IconButton';
 import styles from './Dialog.module.css';
 
 export type DialogProps = {
@@ -58,6 +60,9 @@ export function Dialog({ open, title, onClose, children, footer }: DialogProps) 
         </h2>
         <div className={styles.body}>{children}</div>
         {footer ? <div className={styles.footer}>{footer}</div> : null}
+        {/* Last in DOM order so showModal() still focuses the first field of the body; it sits
+            in the header corner visually. */}
+        <IconButton icon={X} label="Đóng" size="sm" className={styles.close} onClick={onClose} />
       </div>
     </dialog>
   );

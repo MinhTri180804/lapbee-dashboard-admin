@@ -11,6 +11,7 @@
   background: var(--scrim);
 }
 .panel {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
@@ -18,6 +19,13 @@
 }
 .title {
   font-size: var(--fs-20);
+  /* Room for the close button in the corner. */
+  padding-right: var(--space-8);
+}
+.close {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
 }
 .body {
   font-size: var(--fs-14);
