@@ -84,6 +84,12 @@ export default defineConfig(
     languageOptions: { globals: { ...globals.node } },
   },
   {
+    files: ['public/**/*.js'],
+    extends: [tseslint.configs.disableTypeChecked],
+    languageOptions: { sourceType: 'script', globals: { ...globals.browser } },
+    rules: { '@typescript-eslint/no-unused-vars': ['error', { caughtErrors: 'none' }] },
+  },
+  {
     files: ['**/*.test.{ts,tsx}', 'src/test/**'],
     rules: { '@typescript-eslint/no-non-null-assertion': 'off' },
   },
