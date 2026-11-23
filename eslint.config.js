@@ -79,8 +79,9 @@ export default defineConfig(
     },
   },
   {
-    files: ['*.js', '*.ts'],
+    files: ['*.js', '*.ts', 'scripts/**/*.mjs'],
     extends: [tseslint.configs.disableTypeChecked],
+    languageOptions: { globals: { ...globals.node } },
   },
   {
     files: ['**/*.test.{ts,tsx}', 'src/test/**'],
