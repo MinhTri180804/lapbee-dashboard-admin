@@ -5,8 +5,9 @@ import { meFixture } from '@/test/fixtures/auth';
 import { server } from '@/test/msw/server';
 import { problem } from '@/test/msw/problem';
 import { createHttp } from './client';
-import { NetworkError, ProblemError } from './errors';
+import { NetworkError, ProblemError, ReauthCancelledError } from './errors';
 import { on } from './events';
+import { isReauthPending, rejectReauth, resolveReauth } from './reauth-coordinator';
 
 const BASE = 'http://localhost/admin/v1';
 const api = createHttp(BASE);
@@ -164,5 +165,99 @@ describe('http client', () => {
     await api.get('/things');
 
     expect(sessionStore.get().lastActivityAt).toBeGreaterThanOrEqual(before);
+  });
+
+  it('REAUTH_REQUIRED chờ xác nhận rồi gửi lại; hai request song song chỉ mở một lần', async () => {
+    const seen = new Map<string, number>();
+    let confirmed = false;
+    server.use(
+      mock.post(`${BASE}/things/:id`, ({ params }) => {
+        const id = String(params.id);
+        seen.set(id, (seen.get(id) ?? 0) + 1);
+        return confirmed ? HttpResponse.json({ id }) : problem(403, 'REAUTH_REQUIRED');
+      }),
+    );
+    let prompts = 0;
+    const off = on('reauth:required', () => {
+      prompts += 1;
+      // Let the second request hit REAUTH_REQUIRED too before confirming.
+      setTimeout(() => {
+        confirmed = true;
+        resolveReauth();
+      }, 20);
+    });
+
+    const [a, b] = await Promise.all([api.post('/things/a', {}), api.post('/things/b', {})]);
+
+    expect(prompts).toBe(1);
+    expect(a.status).toBe(200);
+    expect(b.status).toBe(200);
+    expect(a.data).toEqual({ id: 'a' });
+    expect(b.data).toEqual({ id: 'b' });
+    expect(Object.fromEntries(seen)).toEqual({ a: 2, b: 2 });
+    expect(isReauthPending()).toBe(false);
+    off();
+  });
+
+  it('gửi lại sau step-up đọc lại X-CSRF-Token từ store', async () => {
+    const tokens: (string | null)[] = [];
+    server.use(
+      mock.post(`${BASE}/auth/password`, ({ request }) => {
+        tokens.push(request.headers.get('X-CSRF-Token'));
+        return tokens.length === 1 ? problem(403, 'REAUTH_REQUIRED') : HttpResponse.json({});
+      }),
+    );
+    sessionStore.setCsrfToken('t1');
+    const off = on('reauth:required', () => {
+      sessionStore.setCsrfToken('t2');
+      resolveReauth();
+    });
+
+    await api.post('/auth/password', {});
+
+    expect(tokens).toEqual(['t1', 't2']);
+    off();
+  });
+
+  it('huỷ step-up ném ReauthCancelledError', async () => {
+    let posts = 0;
+    server.use(
+      mock.post(`${BASE}/auth/password`, () => {
+        posts += 1;
+        return problem(403, 'REAUTH_REQUIRED');
+      }),
+    );
+    const off = on('reauth:required', () => {
+      rejectReauth();
+    });
+
+    await expect(api.post('/auth/password', {})).rejects.toBeInstanceOf(ReauthCancelledError);
+    expect(posts).toBe(1);
+    expect(isReauthPending()).toBe(false);
+    off();
+  });
+
+  it('gửi lại mà vẫn REAUTH_REQUIRED thì ném ProblemError, không lặp', async () => {
+    let posts = 0;
+    let prompts = 0;
+    server.use(
+      mock.post(`${BASE}/auth/password`, () => {
+        posts += 1;
+        return problem(403, 'REAUTH_REQUIRED');
+      }),
+    );
+    const off = on('reauth:required', () => {
+      prompts += 1;
+      resolveReauth();
+    });
+
+    const error: unknown = await api.post('/auth/password', {}).catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(ProblemError);
+    expect(error).toMatchObject({ code: 'REAUTH_REQUIRED', status: 403 });
+    expect(posts).toBe(2);
+    expect(prompts).toBe(1);
+    expect(isReauthPending()).toBe(false);
+    off();
   });
 });

@@ -1,13 +1,15 @@
 import axios, { type AxiosInstance, type AxiosResponse } from 'axios';
 import { isProblem, toAppError } from '../errors';
 import { emit } from '../events';
+import { waitForReauth } from '../reauth-coordinator';
 import { CSRF_HEADER, refreshCsrfToken } from './csrf';
 
 /**
  * Response error interceptor (spec §4.4), in order:
  * 1. map the failure to an AppError;
  * 2. `403 CSRF_FAILED` (first time only): refresh the token, resend once;
- * 3. (Task 6) `403 REAUTH_REQUIRED`;
+ * 3. `403 REAUTH_REQUIRED` (first time only): wait for the shared step-up prompt, resend once;
+ *    a cancelled prompt rejects with `ReauthCancelledError`;
  * 4. `401 UNAUTHENTICATED`: emit `session:expired` unless `lbSkipSessionExpired`;
  * 5. reject with the AppError.
  */
@@ -26,9 +28,13 @@ export function createErrorHandler(instance: AxiosInstance) {
       return instance.request(config);
     }
 
-    // ── Task 6: REAUTH_REQUIRED branch goes here ──────────────────────────────
-    // if (config && isProblem(appError, 'REAUTH_REQUIRED') && !config.lbRetriedReauth) { … }
-    // ──────────────────────────────────────────────────────────────────────────
+    if (config && isProblem(appError, 'REAUTH_REQUIRED') && !config.lbRetriedReauth) {
+      // Shared prompt; rejects with ReauthCancelledError when the user cancels.
+      await waitForReauth();
+      config.lbRetriedReauth = true;
+      // The CSRF header is re-read from the store by the request interceptor.
+      return instance.request(config);
+    }
 
     if (
       isProblem(appError, 'UNAUTHENTICATED') &&
