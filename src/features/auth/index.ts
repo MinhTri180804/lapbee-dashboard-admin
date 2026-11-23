@@ -6,3 +6,5 @@ export { useChangePassword } from './hooks/use-change-password';
 export { useSessions } from './hooks/use-sessions';
 export { useRevokeSession, type RevokeTarget } from './hooks/use-revoke-session';
 export { authKeys, describeUserAgent, toSessionRow, type SessionRow } from './model/adapters';
+export { LoginPage } from './pages/LoginPage';
+export { SetupPasswordPage } from './pages/SetupPasswordPage';

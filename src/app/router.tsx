@@ -3,6 +3,7 @@ import { createBrowserRouter, Navigate, type RouteObject } from 'react-router';
 import type { Permission } from '@/shared/api/generated/permissions';
 import { RequireAuth, RequirePermission, type PermissionMode } from '@/shared/auth/permissions';
 import { useSession } from '@/shared/auth/session-store';
+import { LoginPage, SetupPasswordPage } from '@/features/auth';
 import { Shell } from './layout/Shell';
 import { firstAllowedPath } from './nav';
 import { ComingSoonPage } from './pages/ComingSoonPage';
@@ -31,8 +32,8 @@ export const routes: RouteObject[] = [
   {
     element: <AppRoot />,
     children: [
-      { path: '/login', element: <ComingSoonPage title="Đăng nhập" standalone /> },
-      { path: '/setup-password', element: <ComingSoonPage title="Đặt mật khẩu" standalone /> },
+      { path: '/login', element: <LoginPage /> },
+      { path: '/setup-password', element: <SetupPasswordPage /> },
       {
         element: (
           <RequireAuth>
