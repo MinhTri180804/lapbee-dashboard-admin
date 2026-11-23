@@ -99,6 +99,45 @@ describe('ReauthDialog', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
+  it('closes when the session expires while open', async () => {
+    renderWithProviders(<p>page</p>, { route: '/posts', session: {} });
+    let spies!: ReturnType<typeof openReauth>;
+    act(() => {
+      spies = openReauth();
+    });
+    await screen.findByRole('dialog', { name: 'Xác nhận mật khẩu' });
+    act(() => {
+      emit('session:expired');
+    });
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+    await waitFor(() => {
+      expect(spies.onRejected).toHaveBeenCalled();
+    });
+  });
+
+  it('reopens with an empty field and no error', async () => {
+    server.use(http.post(URL, () => problem(401, 'INVALID_CREDENTIALS')));
+    const user = userEvent.setup();
+    renderWithProviders(<p>page</p>, { session: {} });
+    act(() => {
+      openReauth();
+    });
+    await user.type(await screen.findByLabelText('Mật khẩu'), 'sai');
+    await user.click(screen.getByRole('button', { name: 'Xác nhận' }));
+    await screen.findByText('Mật khẩu không đúng.');
+    await user.click(screen.getByRole('button', { name: 'Huỷ' }));
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+    act(() => {
+      openReauth();
+    });
+    expect(await screen.findByLabelText('Mật khẩu')).toHaveValue('');
+    expect(screen.queryByText('Mật khẩu không đúng.')).toBeNull();
+  });
+
   it('rejects a pending prompt when unmounted', async () => {
     const { unmount } = renderWithProviders(<p>page</p>, { session: {} });
     let spies!: ReturnType<typeof openReauth>;

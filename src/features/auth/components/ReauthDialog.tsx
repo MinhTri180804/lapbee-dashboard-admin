@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { on } from '@/shared/api/events';
 import { isReauthPending, rejectReauth, resolveReauth } from '@/shared/api/reauth-coordinator';
 import { messageFor } from '@/shared/form/error-messages';
@@ -17,12 +17,28 @@ export function ReauthDialog() {
   const reauth = useReauth();
   const { reset } = reauth;
 
+  const close = useCallback(() => {
+    setOpen(false);
+    setPassword('');
+    setError(null);
+    reset();
+  }, [reset]);
+
   useEffect(
     () =>
       on('reauth:required', () => {
         setOpen(true);
       }),
     [],
+  );
+
+  // The bridge already rejects the prompt and signs out; just take the modal down.
+  useEffect(
+    () =>
+      on('session:expired', () => {
+        close();
+      }),
+    [close],
   );
 
   // Never leave a request hanging if the app unmounts mid-prompt.
@@ -32,13 +48,6 @@ export function ReauthDialog() {
     },
     [],
   );
-
-  const close = () => {
-    setOpen(false);
-    setPassword('');
-    setError(null);
-    reset();
-  };
 
   const cancel = () => {
     rejectReauth();

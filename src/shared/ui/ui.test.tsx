@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useForm } from 'react-hook-form';
 import { useState } from 'react';
@@ -187,6 +187,36 @@ describe('Dialog', () => {
     expect(screen.queryByRole('dialog', { name: 'T' })).toBeNull();
     expect(opener).toHaveFocus();
     expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('calls onClose once on cancel, not again from the native close event', async () => {
+    const onClose = vi.fn();
+    function Host() {
+      const [open, setOpen] = useState(true);
+      return (
+        <Dialog
+          open={open}
+          title="T"
+          onClose={() => {
+            onClose();
+            setOpen(false);
+          }}
+        >
+          x
+        </Dialog>
+      );
+    }
+    render(<Host />);
+    act(() => {
+      screen
+        .getByRole('dialog', { name: 'T' })
+        .dispatchEvent(new Event('cancel', { cancelable: true }));
+    });
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'T' })).toBeNull();
+    });
+    await new Promise((r) => setTimeout(r, 20));
+    expect(onClose).toHaveBeenCalledOnce();
   });
 
   it('renders footer', () => {
