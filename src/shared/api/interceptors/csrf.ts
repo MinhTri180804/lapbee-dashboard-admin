@@ -22,7 +22,9 @@ let inflight: Promise<string> | null = null;
  */
 export function refreshCsrfToken(instance: AxiosInstance): Promise<string> {
   inflight ??= instance
-    .get<Res<'/admin/v1/auth/me', 'get', 200>>('/auth/me')
+    // `lbRetriedCsrf`: a `CSRF_FAILED` on the refresh itself must not await this same
+    // in-flight promise (it would never settle); it rejects instead.
+    .get<Res<'/admin/v1/auth/me', 'get', 200>>('/auth/me', { lbRetriedCsrf: true })
     .then(({ data }) => {
       sessionStore.setCsrfToken(data.csrfToken);
       return data.csrfToken;

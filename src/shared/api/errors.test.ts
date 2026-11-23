@@ -55,6 +55,41 @@ describe('toAppError', () => {
     expect(error).toMatchObject({ code: 'VERSION_CONFLICT', status: 409, fieldErrors: [] });
   });
 
+  it('problem có errors sai dạng vẫn là ProblemError, bỏ các mục hỏng', () => {
+    const error = toAppError(
+      axiosErrorWith({
+        status: 422,
+        data: {
+          ...problemBody,
+          status: 422,
+          code: 'VALIDATION_FAILED',
+          errors: [{ path: 'title', message: 'Bắt buộc' }, { path: 3 }, 'oops', null],
+        },
+        headers: { 'content-type': 'application/problem+json' },
+      }),
+    );
+
+    expect(error).toBeInstanceOf(ProblemError);
+    expect(error).toMatchObject({
+      code: 'VALIDATION_FAILED',
+      status: 422,
+      fieldErrors: [{ path: 'title', message: 'Bắt buộc' }],
+    });
+  });
+
+  it('problem có errors không phải mảng vẫn là ProblemError, fieldErrors rỗng', () => {
+    const error = toAppError(
+      axiosErrorWith({
+        status: 409,
+        data: { ...problemBody, errors: 'nope' },
+        headers: { 'content-type': 'application/problem+json' },
+      }),
+    );
+
+    expect(error).toBeInstanceOf(ProblemError);
+    expect(error).toMatchObject({ code: 'VERSION_CONFLICT', fieldErrors: [] });
+  });
+
   it('không có response trả NetworkError', () => {
     expect(toAppError(axiosErrorWith())).toBeInstanceOf(NetworkError);
   });

@@ -73,7 +73,6 @@ function asProblem(data: unknown): (Problem & Record<string, unknown>) | null {
   if (!isRecord(data)) return null;
   const { type, title, status, code, detail, errors } = data;
   if (typeof code !== 'string' || typeof status !== 'number') return null;
-  if (errors !== undefined && !(Array.isArray(errors) && errors.every(isFieldError))) return null;
   return {
     ...data,
     type: typeof type === 'string' ? type : 'about:blank',
@@ -81,6 +80,8 @@ function asProblem(data: unknown): (Problem & Record<string, unknown>) | null {
     status,
     code,
     detail: typeof detail === 'string' ? detail : '',
+    // A malformed `errors` must not cost us the `code`: keep only well-formed entries.
+    errors: Array.isArray(errors) ? errors.filter(isFieldError) : [],
   };
 }
 

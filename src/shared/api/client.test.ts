@@ -260,4 +260,22 @@ describe('http client', () => {
     expect(isReauthPending()).toBe(false);
     off();
   });
+
+  it(
+    '/auth/me trả CSRF_FAILED khi đang refresh thì request gốc bị từ chối, không treo',
+    { timeout: 1000 },
+    async () => {
+      let mes = 0;
+      server.use(
+        mock.get(`${BASE}/auth/me`, () => {
+          mes += 1;
+          return problem(403, 'CSRF_FAILED');
+        }),
+        mock.post(`${BASE}/posts`, () => problem(403, 'CSRF_FAILED')),
+      );
+
+      await expect(api.post('/posts', {})).rejects.toBeInstanceOf(ProblemError);
+      expect(mes).toBe(1);
+    },
+  );
 });
