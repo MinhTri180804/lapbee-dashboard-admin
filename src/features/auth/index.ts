@@ -9,5 +9,6 @@ export { authKeys, describeUserAgent, toSessionRow, type SessionRow } from './mo
 export { LoginPage } from './pages/LoginPage';
 export { SetupPasswordPage } from './pages/SetupPasswordPage';
 export { useReauth } from './hooks/use-reauth';
+export { useKeepAlive } from './hooks/use-keep-alive';
 export { ReauthDialog } from './components/ReauthDialog';
 export { AccountPage } from './pages/AccountPage';

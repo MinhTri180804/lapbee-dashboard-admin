@@ -20,6 +20,8 @@
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-2);
   animation: in var(--dur-base) var(--ease-out);
+  /* The region ignores the pointer; toasts with buttons must not. */
+  pointer-events: auto;
 }
 .success {
   border-left-color: var(--success);
@@ -42,6 +44,33 @@
 .icon {
   flex: none;
   margin-top: 1px;
+}
+.content {
+  flex: 1;
+  min-width: 0;
+}
+.close {
+  flex: none;
+  margin: calc(-1 * var(--space-1)) calc(-1 * var(--space-2)) 0 0;
+}
+.action {
+  margin-top: var(--space-2);
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: var(--font-body);
+  font-size: var(--fs-13);
+  font-weight: var(--fw-semibold);
+  color: var(--text-link);
+  cursor: pointer;
+}
+.action:hover {
+  text-decoration: underline;
+}
+.action:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+  border-radius: var(--radius-sm);
 }
 .title {
   font-size: var(--fs-14);

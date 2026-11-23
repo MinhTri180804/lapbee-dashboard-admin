@@ -16,6 +16,7 @@ import {
   useToast,
   Wordmark,
 } from '.';
+import type { ToastInput } from '.';
 
 describe('TextField', () => {
   it('links the error to the input', () => {
@@ -260,6 +261,96 @@ describe('Toast', () => {
       expect(screen.getByRole('status')).toHaveTextContent('Đã lưu');
       act(() => {
         vi.advanceTimersByTime(1);
+      });
+      expect(screen.getByRole('status')).not.toHaveTextContent('Đã lưu');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe('Toast actions', () => {
+  function Trigger({ input }: { input: ToastInput }) {
+    const toast = useToast();
+    return (
+      <button
+        onClick={() => {
+          toast.show(input);
+        }}
+      >
+        go
+      </button>
+    );
+  }
+
+  it('a sticky toast stays until its action runs, then closes', () => {
+    vi.useFakeTimers();
+    try {
+      const onClick = vi.fn();
+      render(
+        <ToastProvider>
+          <Trigger
+            input={{
+              kind: 'info',
+              title: 'Phiên sắp hết hạn',
+              duration: null,
+              action: { label: 'Tiếp tục', onClick },
+            }}
+          />
+        </ToastProvider>,
+      );
+      act(() => {
+        screen.getByRole('button', { name: 'go' }).click();
+      });
+      act(() => {
+        vi.advanceTimersByTime(60_000);
+      });
+      expect(screen.getByRole('status')).toHaveTextContent('Phiên sắp hết hạn');
+      act(() => {
+        screen.getByRole('button', { name: 'Tiếp tục' }).click();
+      });
+      expect(onClick).toHaveBeenCalledOnce();
+      expect(screen.getByRole('status')).not.toHaveTextContent('Phiên sắp hết hạn');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('a sticky toast has an Đóng button that closes it without the action', async () => {
+    const onClick = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <ToastProvider>
+        <Trigger
+          input={{
+            kind: 'info',
+            title: 'Phiên sắp hết hạn',
+            duration: null,
+            action: { label: 'Tiếp tục', onClick },
+          }}
+        />
+      </ToastProvider>,
+    );
+    await user.click(screen.getByRole('button', { name: 'go' }));
+    await user.click(screen.getByRole('button', { name: 'Đóng' }));
+    expect(screen.getByRole('status')).not.toHaveTextContent('Phiên sắp hết hạn');
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
+  it('honours a custom duration', () => {
+    vi.useFakeTimers();
+    try {
+      render(
+        <ToastProvider>
+          <Trigger input={{ kind: 'success', title: 'Đã lưu', duration: 500 }} />
+        </ToastProvider>,
+      );
+      act(() => {
+        screen.getByRole('button', { name: 'go' }).click();
+      });
+      expect(screen.queryByRole('button', { name: 'Đóng' })).toBeNull();
+      act(() => {
+        vi.advanceTimersByTime(500);
       });
       expect(screen.getByRole('status')).not.toHaveTextContent('Đã lưu');
     } finally {
