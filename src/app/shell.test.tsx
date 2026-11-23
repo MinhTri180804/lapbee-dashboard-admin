@@ -41,6 +41,13 @@ describe('Shell sidebar', () => {
     expect(within(side).queryByText('Super admin')).not.toBeInTheDocument();
   });
 
+  it('gives the user-menu trigger an explicit accessible name', () => {
+    renderWithProviders(<Shell />, { route: '/site', session: { permissions: ['*'] } });
+    const trigger = within(sidebar()).getByRole('button', { name: 'Tài khoản: Quản trị viên' });
+    expect(trigger).toHaveAttribute('aria-haspopup', 'menu');
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+  });
+
   it('lists only permitted nav items, grouped, and marks the current one', () => {
     renderWithProviders(<Shell />, { route: '/posts', session: { permissions: ['post.read'] } });
     const nav = within(sidebar()).getByRole('navigation');

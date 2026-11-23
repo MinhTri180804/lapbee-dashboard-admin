@@ -89,6 +89,7 @@ export function UserMenu() {
         ref={triggerRef}
         type="button"
         className={styles.trigger}
+        aria-label={`Tài khoản: ${user.name}`}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
