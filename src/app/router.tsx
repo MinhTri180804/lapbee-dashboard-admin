@@ -3,7 +3,7 @@ import { createBrowserRouter, Navigate, type RouteObject } from 'react-router';
 import type { Permission } from '@/shared/api/generated/permissions';
 import { RequireAuth, RequirePermission, type PermissionMode } from '@/shared/auth/permissions';
 import { useSession } from '@/shared/auth/session-store';
-import { LoginPage, SetupPasswordPage } from '@/features/auth';
+import { AccountPage, LoginPage, SetupPasswordPage } from '@/features/auth';
 import { Shell } from './layout/Shell';
 import { firstAllowedPath } from './nav';
 import { ComingSoonPage } from './pages/ComingSoonPage';
@@ -65,7 +65,7 @@ export const routes: RouteObject[] = [
               'any',
             ),
           },
-          { path: '/account', element: <ComingSoonPage title="Tài khoản" /> },
+          { path: '/account', element: <AccountPage /> },
           { path: '*', element: <NotFoundPage /> },
         ],
       },

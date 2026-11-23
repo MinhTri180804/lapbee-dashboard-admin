@@ -10,3 +10,4 @@ export { LoginPage } from './pages/LoginPage';
 export { SetupPasswordPage } from './pages/SetupPasswordPage';
 export { useReauth } from './hooks/use-reauth';
 export { ReauthDialog } from './components/ReauthDialog';
+export { AccountPage } from './pages/AccountPage';

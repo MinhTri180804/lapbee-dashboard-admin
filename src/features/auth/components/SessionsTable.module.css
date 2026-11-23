@@ -1,0 +1,11 @@
+.device {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.error {
+  margin: 0;
+  font-size: var(--fs-14);
+  color: var(--danger);
+}
