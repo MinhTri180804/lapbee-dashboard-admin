@@ -1,4 +1,5 @@
 import '@testing-library/jest-dom/vitest';
+import { isReauthPending, rejectReauth } from '@/shared/api/reauth-coordinator';
 import { sessionStore } from '@/shared/auth/session-store';
 import { server } from './msw/server';
 
@@ -9,6 +10,8 @@ beforeAll(() => {
 afterEach(() => {
   server.resetHandlers();
   sessionStore.signOut();
+  // A reauth prompt left open would make the next test's 403 REAUTH_REQUIRED join it.
+  if (isReauthPending()) rejectReauth();
 });
 
 afterAll(() => {
