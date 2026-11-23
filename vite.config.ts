@@ -25,6 +25,10 @@ export default defineConfig({
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
+  build: {
+    // CSP `font-src 'self'` blocks `data:` fonts, so never inline them (Vite inlines files < 4 KiB).
+    assetsInlineLimit: (file) => (/\.woff2?$/.test(file) ? false : undefined),
+  },
   server: { port: 5173, strictPort: true, proxy },
   preview: { port: 5173, proxy, headers: { 'Content-Security-Policy': csp } },
   test: {

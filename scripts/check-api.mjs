@@ -8,12 +8,16 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const committedDir = path.join(root, 'src/shared/api/generated');
 const tmp = await mkdtemp(path.join(os.tmpdir(), 'gen-api-'));
 
-try {
+// Set process.exitCode and return instead of process.exit(), so `finally` always removes tmp.
+async function check() {
   const res = spawnSync(process.execPath, [path.join(root, 'scripts/gen-api.mjs'), '--out', tmp], {
     stdio: ['ignore', 'ignore', 'inherit'],
     env: process.env,
   });
-  if (res.status !== 0) process.exit(res.status ?? 1);
+  if (res.status !== 0) {
+    process.exitCode = res.status ?? 1;
+    return;
+  }
 
   const names = new Set([
     ...(await readdir(tmp)),
@@ -29,9 +33,14 @@ try {
   }
   if (stale.length > 0) {
     console.error(`check-api: out of date: ${stale.join(', ')}. Run npm run gen:api.`);
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   }
   console.log('check-api: generated files are up to date');
+}
+
+try {
+  await check();
 } finally {
   await rm(tmp, { recursive: true, force: true });
 }
