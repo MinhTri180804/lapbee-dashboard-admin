@@ -1,6 +1,6 @@
 import type { UseFormSetError } from 'react-hook-form';
 import { describe, expect, it, vi } from 'vitest';
-import { ProblemError } from '@/shared/api/errors';
+import { ProblemError, ReauthCancelledError } from '@/shared/api/errors';
 import { applyProblemToForm } from './apply-problem-to-form';
 
 type Values = { newPassword: string; content: string };
@@ -70,6 +70,12 @@ describe('applyProblemToForm', () => {
       type: 'server',
       message: 'Có lỗi xảy ra.',
     });
+  });
+
+  it('huỷ step-up là đã xử lý: trả true, không gắn lỗi nào', () => {
+    const setError = vi.fn<UseFormSetError<Values>>();
+    expect(applyProblemToForm<Values>(new ReauthCancelledError(), setError)).toBe(true);
+    expect(setError).not.toHaveBeenCalled();
   });
 
   it('lỗi không phải ProblemError thì trả false', () => {

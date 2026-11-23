@@ -105,6 +105,36 @@ describe('change password', () => {
     });
   });
 
+  it('shows nothing when the step-up prompt is cancelled', async () => {
+    let attempts = 0;
+    server.use(
+      mock.post(`${BASE}/auth/password`, () => {
+        attempts += 1;
+        return problem(403, 'REAUTH_REQUIRED');
+      }),
+    );
+    const user = userEvent.setup();
+    renderWithProviders(<AccountPage />, { session: {} });
+    await fillForm(user);
+
+    const dialog = await screen.findByRole('dialog', { name: 'Xác nhận mật khẩu' });
+    await user.click(within(dialog).getByRole('button', { name: 'Huỷ' }));
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+    // Let the rejected mutation settle before asserting the absence of an error.
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Đổi mật khẩu' })).not.toHaveAttribute(
+        'aria-busy',
+        'true',
+      );
+    });
+    await new Promise((r) => setTimeout(r, 50));
+    expect(attempts).toBe(1);
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.queryByText('Đã có lỗi xảy ra. Thử lại sau.')).toBeNull();
+  });
+
   it('shows VALIDATION_FAILED under the new password field', async () => {
     server.use(
       mock.post(`${BASE}/auth/password`, () =>

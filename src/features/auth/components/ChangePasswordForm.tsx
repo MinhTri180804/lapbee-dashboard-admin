@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { isProblem } from '@/shared/api/errors';
+import { isProblem, ReauthCancelledError } from '@/shared/api/errors';
 import { applyProblemToForm } from '@/shared/form/apply-problem-to-form';
 import { messageFor } from '@/shared/form/error-messages';
 import { Button, PasswordField, useToast } from '@/shared/ui';
@@ -63,7 +63,11 @@ export function ChangePasswordForm() {
               type: 'server',
               message: 'Mật khẩu hiện tại không đúng.',
             });
-          } else if (isProblem(error, 'VALIDATION_FAILED')) {
+          } else if (
+            isProblem(error, 'VALIDATION_FAILED') ||
+            error instanceof ReauthCancelledError
+          ) {
+            // A cancelled step-up is not an error: the helper treats it as handled, sets nothing.
             applyProblemToForm(error, setError, {}, FIELDS);
           } else {
             setError('root.server', { type: 'server', message: messageFor(error) });

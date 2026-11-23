@@ -1,9 +1,12 @@
 import type { FieldValues, Path, UseFormSetError } from 'react-hook-form';
-import { ProblemError } from '@/shared/api/errors';
+import { ProblemError, ReauthCancelledError } from '@/shared/api/errors';
 
 /**
  * Maps a backend problem onto a react-hook-form instance. Returns false (and does nothing)
  * when `error` is not a `ProblemError`, so callers can fall back to a toast.
+ *
+ * A `ReauthCancelledError` (the user dismissed the step-up prompt) is not an error to show:
+ * it returns true and sets nothing, so forms that route failures through here stay quiet.
  *
  * Each field error goes to `pathMap[path]`, else to the path itself when the form knows it
  * (`knownFields`; when omitted every path is assumed to be a field). Errors for unknown paths
@@ -16,6 +19,7 @@ export function applyProblemToForm<T extends FieldValues>(
   pathMap: Partial<Record<string, Path<T>>> = {},
   knownFields?: readonly string[],
 ): boolean {
+  if (error instanceof ReauthCancelledError) return true;
   if (!(error instanceof ProblemError)) return false;
 
   if (error.fieldErrors.length === 0) {
