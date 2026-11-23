@@ -47,6 +47,10 @@ export function Dialog({ open, title, onClose, children, footer }: DialogProps) 
         e.preventDefault();
         onClose();
       }}
+      onClose={() => {
+        // Browsers can close a dialog without a cancelable `cancel`; the prop still says open.
+        if (open) onClose();
+      }}
     >
       <div className={styles.panel}>
         <h2 id={titleId} className={styles.title}>

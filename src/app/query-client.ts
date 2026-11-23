@@ -37,6 +37,8 @@ export function createQueryClient(): QueryClient {
   return new QueryClient({
     queryCache: new QueryCache({
       onError: (error, query) => {
+        // A first-load failure is the page's to show; only background refetch failures toast.
+        if (query.state.data === undefined) return;
         handleError(error, query.meta);
       },
     }),

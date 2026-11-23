@@ -1,5 +1,5 @@
 import { MutationObserver, QueryObserver } from '@tanstack/react-query';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ProblemError, ReauthCancelledError } from '@/shared/api/errors';
 import { on } from '@/shared/api/events';
 import { createQueryClient } from './query-client';
@@ -8,19 +8,19 @@ function problemError(status: number, code: string, detail = ''): ProblemError {
   return new ProblemError({ type: 'about:blank', title: 'x', status, code, detail });
 }
 
+const offs: (() => void)[] = [];
+
+afterEach(() => {
+  offs.splice(0).forEach((off) => {
+    off();
+  });
+});
+
 function listen() {
   const conflict = vi.fn();
   const toast = vi.fn();
-  const offs = [on('conflict', conflict), on('toast', toast)];
-  return {
-    conflict,
-    toast,
-    off: () => {
-      offs.forEach((off) => {
-        off();
-      });
-    },
-  };
+  offs.push(on('conflict', conflict), on('toast', toast));
+  return { conflict, toast };
 }
 
 async function runMutation(
@@ -41,7 +41,6 @@ describe('createQueryClient — mutation errors', () => {
     await runMutation(problemError(409, 'VERSION_CONFLICT'), { invalidates: [['site']] });
     expect(spy.conflict).toHaveBeenCalledWith({ invalidates: [['site']] });
     expect(spy.toast).not.toHaveBeenCalled();
-    spy.off();
   });
 
   it('emits nothing when meta.handlesErrors is set', async () => {
@@ -49,7 +48,6 @@ describe('createQueryClient — mutation errors', () => {
     await runMutation(problemError(422, 'VALIDATION_FAILED'), { handlesErrors: true });
     expect(spy.conflict).not.toHaveBeenCalled();
     expect(spy.toast).not.toHaveBeenCalled();
-    spy.off();
   });
 
   it('emits nothing for ReauthCancelledError', async () => {
@@ -57,14 +55,12 @@ describe('createQueryClient — mutation errors', () => {
     await runMutation(new ReauthCancelledError());
     expect(spy.conflict).not.toHaveBeenCalled();
     expect(spy.toast).not.toHaveBeenCalled();
-    spy.off();
   });
 
   it('emits nothing for 401 UNAUTHENTICATED (the session handler covers it)', async () => {
     const spy = listen();
     await runMutation(problemError(401, 'UNAUTHENTICATED'));
     expect(spy.toast).not.toHaveBeenCalled();
-    spy.off();
   });
 
   it('toasts any other error with messageFor', async () => {
@@ -74,24 +70,44 @@ describe('createQueryClient — mutation errors', () => {
       kind: 'error',
       title: 'Bạn không có quyền làm việc này.',
     });
-    spy.off();
   });
 });
 
 describe('createQueryClient — queries', () => {
-  it('does not retry a ProblemError', async () => {
+  it('does not retry a ProblemError and leaves a first-load error to the page', async () => {
     const client = createQueryClient();
     const queryFn = vi.fn(() => Promise.reject(problemError(404, 'NOT_FOUND')));
     const spy = listen();
     const observer = new QueryObserver(client, { queryKey: ['x'], queryFn });
     const unsubscribe = observer.subscribe(() => undefined);
-    await vi.waitFor(() => {
-      expect(observer.getCurrentResult().status).toBe('error');
-    });
-    expect(queryFn).toHaveBeenCalledTimes(1);
-    expect(spy.toast).toHaveBeenCalledWith({ kind: 'error', title: 'Không tìm thấy dữ liệu.' });
-    unsubscribe();
-    spy.off();
+    try {
+      await vi.waitFor(() => {
+        expect(observer.getCurrentResult().status).toBe('error');
+      });
+      expect(queryFn).toHaveBeenCalledTimes(1);
+      expect(spy.toast).not.toHaveBeenCalled();
+    } finally {
+      unsubscribe();
+    }
+  });
+
+  it('toasts a background refetch failure (data already present)', async () => {
+    const client = createQueryClient();
+    client.setQueryData(['x'], 'cached');
+    const queryFn = vi.fn(() => Promise.reject(problemError(404, 'NOT_FOUND')));
+    const spy = listen();
+    const observer = new QueryObserver(client, { queryKey: ['x'], queryFn, staleTime: 0 });
+    const unsubscribe = observer.subscribe(() => undefined);
+    try {
+      await vi.waitFor(() => {
+        expect(spy.toast).toHaveBeenCalledWith({
+          kind: 'error',
+          title: 'Không tìm thấy dữ liệu.',
+        });
+      });
+    } finally {
+      unsubscribe();
+    }
   });
 
   it('retries other errors up to twice', () => {

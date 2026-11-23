@@ -137,6 +137,58 @@ describe('Dialog', () => {
     expect(opener).toHaveFocus();
   });
 
+  it('calls onClose when the native close event fires while open is still true', () => {
+    const onClose = vi.fn();
+    render(
+      <Dialog open title="T" onClose={onClose}>
+        x
+      </Dialog>,
+    );
+    act(() => {
+      screen.getByRole('dialog', { name: 'T' }).dispatchEvent(new Event('close'));
+    });
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it('closes and restores focus when open flips to false externally', async () => {
+    const onClose = vi.fn();
+    function Host() {
+      const [open, setOpen] = useState(false);
+      return (
+        <>
+          <button
+            onClick={() => {
+              setOpen(true);
+            }}
+          >
+            Mở
+          </button>
+          <button
+            onClick={() => {
+              setOpen(false);
+            }}
+          >
+            Đóng ngoài
+          </button>
+          <Dialog open={open} title="T" onClose={onClose}>
+            x
+          </Dialog>
+        </>
+      );
+    }
+    const user = userEvent.setup();
+    render(<Host />);
+    const opener = screen.getByRole('button', { name: 'Mở' });
+    await user.click(opener);
+    expect(screen.getByRole('dialog', { name: 'T' })).toHaveAttribute('open');
+    act(() => {
+      screen.getByRole('button', { name: 'Đóng ngoài', hidden: true }).click();
+    });
+    expect(screen.queryByRole('dialog', { name: 'T' })).toBeNull();
+    expect(opener).toHaveFocus();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
   it('renders footer', () => {
     render(
       <Dialog open title="T" onClose={() => undefined} footer={<button>Đồng ý</button>}>
