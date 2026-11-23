@@ -1,11 +1,12 @@
 import { QueryClientProvider, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router';
-import { useBootstrapSession } from '@/features/auth';
+import { ReauthDialog, useBootstrapSession } from '@/features/auth';
 import { on } from '@/shared/api/events';
 import { isReauthPending, rejectReauth } from '@/shared/api/reauth-coordinator';
 import { sessionStore } from '@/shared/auth/session-store';
 import { ToastProvider, useToast } from '@/shared/ui';
+import { ConflictDialog } from './ConflictDialog';
 
 /** Providers that do not need the router. The router renders inside them. */
 export function AppProviders({
@@ -58,7 +59,13 @@ export function AppEventsBridge() {
     [navigate, queryClient, toast],
   );
 
-  return <Outlet />;
+  return (
+    <>
+      <Outlet />
+      <ReauthDialog />
+      <ConflictDialog />
+    </>
+  );
 }
 
 /** Root route element: restores the session once, then bridges app events. */

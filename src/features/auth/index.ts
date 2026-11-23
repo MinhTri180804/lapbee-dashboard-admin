@@ -8,3 +8,5 @@ export { useRevokeSession, type RevokeTarget } from './hooks/use-revoke-session'
 export { authKeys, describeUserAgent, toSessionRow, type SessionRow } from './model/adapters';
 export { LoginPage } from './pages/LoginPage';
 export { SetupPasswordPage } from './pages/SetupPasswordPage';
+export { useReauth } from './hooks/use-reauth';
+export { ReauthDialog } from './components/ReauthDialog';
