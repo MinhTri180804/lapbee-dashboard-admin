@@ -14,3 +14,4 @@ Những chỗ dashboard cần mà `openapi.json` v1.4.0 chưa có. Dashboard **k
 | 8 | `GET /auth/me` trả tên vai trò | Hiện vai trò ở sidebar | "Super admin" khi `["*"]`, còn lại hiện email |
 | 9 | Kiểu cho `content` trong OpenAPI (discriminated union theo `type`) | FE sinh kiểu khối thay vì gõ tay | Gõ tay theo README và `block-handlers.ts` |
 | 10 | Spec §8.5 và §17 cập nhật: 10 khối, `checklist`, route `/media/editorjs` | Spec lệch README và code | Theo README và OpenAPI |
+| 11 | Schema của `GET /public/v1/posts/{slug}` dùng `$defs` (mục danh sách đệ quy) mà openapi-typescript không resolve được; nên đặt dưới `components.schemas` (ví dụ schema đệ quy có tên) | Sinh kiểu không cần xử lý đặc biệt | `scripts/gen-api.mjs` hoist `$defs` trong bộ nhớ trước khi sinh kiểu |
