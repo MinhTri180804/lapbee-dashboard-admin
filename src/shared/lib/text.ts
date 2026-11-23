@@ -1,11 +1,7 @@
 // Port of seo-analyzer.js `strip` / `slugify`. Keep the behaviour identical.
 
 export function stripDiacritics(s: string): string {
-  return (s || '')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/đ/g, 'd');
+  return (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd');
 }
 
 export function slugify(s: string): string {

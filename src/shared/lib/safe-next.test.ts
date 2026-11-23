@@ -6,16 +6,12 @@ describe('safeNext', () => {
     expect(safeNext('/posts?page=2')).toBe('/posts?page=2');
   });
 
-  it.each([
-    '//evil.com',
-    'https://evil.com',
-    'javascript:alert(1)',
-    '/\\evil.com',
-    null,
-    '',
-  ])('rejects unsafe value %j and falls back to /', (bad) => {
-    expect(safeNext(bad)).toBe('/');
-  });
+  it.each(['//evil.com', 'https://evil.com', 'javascript:alert(1)', '/\\evil.com', null, ''])(
+    'rejects unsafe value %j and falls back to /',
+    (bad) => {
+      expect(safeNext(bad)).toBe('/');
+    },
+  );
 
   it('never redirects back to /login', () => {
     expect(safeNext('/login')).toBe('/');
