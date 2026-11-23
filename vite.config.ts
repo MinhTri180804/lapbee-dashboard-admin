@@ -29,6 +29,8 @@ export default defineConfig({
   preview: { port: 5173, proxy, headers: { 'Content-Security-Policy': csp } },
   test: {
     environment: 'jsdom',
+    // Same origin as the MSW base URL (http://localhost/admin/v1) so jsdom's XHR skips CORS.
+    environmentOptions: { jsdom: { url: 'http://localhost/' } },
     globals: true,
     setupFiles: ['src/test/setup.ts'],
     css: { modules: { classNameStrategy: 'non-scoped' } },
