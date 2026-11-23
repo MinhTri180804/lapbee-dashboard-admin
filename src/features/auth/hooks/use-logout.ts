@@ -6,6 +6,7 @@ import { authRepo } from '../api/repo';
 export function useLogout(): UseMutationResult<void, Error, void> {
   const queryClient = useQueryClient();
   return useMutation({
+    meta: { handlesErrors: true },
     mutationFn: () => authRepo.logout(),
     onSettled: () => {
       sessionStore.signOut();

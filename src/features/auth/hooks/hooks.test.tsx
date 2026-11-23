@@ -59,34 +59,43 @@ describe('useBootstrapSession', () => {
     });
   });
 
-  it('goes anonymous on 401 without emitting session:expired', async () => {
+  function bootstrapWith(respond: () => Response) {
+    const hit = vi.fn();
     const expired = vi.fn();
     const off = on('session:expired', expired);
-    server.use(mock.get(`${BASE}/auth/me`, () => problem(401, 'UNAUTHENTICATED')));
+    server.use(
+      mock.get(`${BASE}/auth/me`, () => {
+        hit();
+        return respond();
+      }),
+    );
+    signedIn(); // non-anonymous start, so a transition is observable
     renderHook(
       () => {
         useBootstrapSession();
       },
       { wrapper: createWrapper() },
     );
+    return { hit, expired, off };
+  }
+
+  it('goes anonymous on 401 without emitting session:expired', async () => {
+    const { hit, expired, off } = bootstrapWith(() => problem(401, 'UNAUTHENTICATED'));
     await waitFor(() => {
       expect(sessionStore.get().status).toBe('anonymous');
     });
     off();
+    expect(hit).toHaveBeenCalledTimes(1);
     expect(expired).not.toHaveBeenCalled();
   });
 
   it('goes anonymous on other errors', async () => {
-    server.use(mock.get(`${BASE}/auth/me`, () => problem(500, 'INTERNAL')));
-    renderHook(
-      () => {
-        useBootstrapSession();
-      },
-      { wrapper: createWrapper() },
-    );
+    const { hit, off } = bootstrapWith(() => problem(500, 'INTERNAL'));
     await waitFor(() => {
       expect(sessionStore.get().status).toBe('anonymous');
     });
+    off();
+    expect(hit).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -134,8 +143,13 @@ describe('useLogout', () => {
     const qc = createTestQueryClient();
     const clear = vi.spyOn(qc, 'clear');
     server.use(mock.post(`${BASE}/auth/logout`, () => problem(500, 'INTERNAL')));
+    const metas: unknown[] = [];
+    qc.getMutationCache().subscribe((e) => {
+      metas.push(e.mutation?.meta);
+    });
     const { result } = renderHook(() => useLogout(), { wrapper: createWrapper(qc) });
     await act(() => result.current.mutateAsync().catch(() => undefined));
+    expect(metas).toContainEqual({ handlesErrors: true });
     expect(sessionStore.get().status).toBe('anonymous');
     expect(clear).toHaveBeenCalled();
   });
@@ -173,9 +187,12 @@ describe('useRevokeSession', () => {
     server.use(
       mock.delete(`${BASE}/auth/sessions/s1`, () => new HttpResponse(null, { status: 204 })),
     );
-    const { result } = renderHook(() => useRevokeSession(), { wrapper: createWrapper() });
+    const qc = createTestQueryClient();
+    const clear = vi.spyOn(qc, 'clear');
+    const { result } = renderHook(() => useRevokeSession(), { wrapper: createWrapper(qc) });
     await act(() => result.current.mutateAsync({ id: 's1', current: true }));
     expect(sessionStore.get().status).toBe('anonymous');
+    expect(clear).toHaveBeenCalled();
   });
 
   it('invalidates the sessions list for another session and stays signed in', async () => {
