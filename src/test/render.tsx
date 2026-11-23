@@ -1,7 +1,12 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, type RenderResult } from '@testing-library/react';
 import type { ReactElement, ReactNode } from 'react';
-import { createMemoryRouter, RouterProvider, type RouteObject } from 'react-router';
+import {
+  createBrowserRouter,
+  createMemoryRouter,
+  RouterProvider,
+  type RouteObject,
+} from 'react-router';
 import { AppEventsBridge } from '@/app/providers';
 import { sessionStore, type SignInInput } from '@/shared/auth/session-store';
 import { ToastProvider } from '@/shared/ui';
@@ -29,9 +34,12 @@ export type RenderWithProvidersOptions = {
   /** Extra routes next to the catch-all route that renders `ui`, e.g. `/login`. */
   routes?: RouteObject[];
   queryClient?: QueryClient;
+  /** `browser` drives `window.history` (set to `route` first), for tests about the real URL. */
+  history?: 'memory' | 'browser';
 };
 
 export type RenderWithProvidersResult = RenderResult & {
+  /** Memory and browser data routers share one type. */
   router: ReturnType<typeof createMemoryRouter>;
   queryClient: QueryClient;
 };
@@ -47,6 +55,7 @@ export function renderWithProviders(
     session,
     routes = [],
     queryClient = createTestQueryClient(),
+    history = 'memory',
   }: RenderWithProvidersOptions = {},
 ): RenderWithProvidersResult {
   if (session) {
@@ -56,15 +65,19 @@ export function renderWithProviders(
       csrfToken: session.csrfToken ?? meFixture.csrfToken,
     });
   }
-  const router = createMemoryRouter(
-    [
-      {
-        element: <AppEventsBridge />,
-        children: [...routes, { path: '*', element: ui }],
-      },
-    ],
-    { initialEntries: [route] },
-  );
+  const tree: RouteObject[] = [
+    {
+      element: <AppEventsBridge />,
+      children: [...routes, { path: '*', element: ui }],
+    },
+  ];
+  let router: RenderWithProvidersResult['router'];
+  if (history === 'browser') {
+    window.history.replaceState(null, '', route);
+    router = createBrowserRouter(tree);
+  } else {
+    router = createMemoryRouter(tree, { initialEntries: [route] });
+  }
   const result = render(
     <QueryClientProvider client={queryClient}>
       <ToastProvider>

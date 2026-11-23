@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   THEME_STORAGE_KEY,
   applyTheme,
+  getThemeStorage,
   persistTheme,
   readStoredTheme,
   resolveInitialTheme,
@@ -61,6 +62,23 @@ describe('theme', () => {
           throw new Error('quota');
         },
       });
+    }).not.toThrow();
+  });
+
+  it('getThemeStorage returns null when localStorage access throws', () => {
+    const throwing = {
+      get localStorage(): Storage {
+        throw new DOMException('denied', 'SecurityError');
+      },
+    };
+    expect(getThemeStorage(throwing)).toBeNull();
+    expect(getThemeStorage({ localStorage })).toBe(localStorage);
+  });
+
+  it('readStoredTheme and persistTheme accept a missing storage', () => {
+    expect(readStoredTheme(null)).toBeNull();
+    expect(() => {
+      persistTheme('dark', null);
     }).not.toThrow();
   });
 });

@@ -95,13 +95,31 @@ describe('Shell sidebar', () => {
     expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('light');
   });
 
+  it('renders and toggles the theme when localStorage access throws', async () => {
+    const original = Object.getOwnPropertyDescriptor(window, 'localStorage');
+    Object.defineProperty(window, 'localStorage', {
+      configurable: true,
+      get() {
+        throw new DOMException('denied', 'SecurityError');
+      },
+    });
+    try {
+      const user = userEvent.setup();
+      renderWithProviders(<Shell />, { route: '/site', session: { permissions: ['*'] } });
+      await user.click(within(sidebar()).getByRole('button', { name: /Giao diện/ }));
+      expect(document.documentElement.dataset.theme).toMatch(/^(light|dark)$/);
+    } finally {
+      if (original) Object.defineProperty(window, 'localStorage', original);
+    }
+  });
+
   it('links "Xem website" to VITE_LANDING_URL in a new tab', () => {
     vi.stubEnv('VITE_LANDING_URL', 'https://lapbee.example');
     renderWithProviders(<Shell />, { route: '/site', session: { permissions: ['*'] } });
     const link = within(sidebar()).getByRole('link', { name: /Xem website/ });
     expect(link).toHaveAttribute('href', 'https://lapbee.example');
     expect(link).toHaveAttribute('target', '_blank');
-    expect(link).toHaveAttribute('rel', 'noopener');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
   });
 
   it('hides "Xem website" when VITE_LANDING_URL is empty', () => {

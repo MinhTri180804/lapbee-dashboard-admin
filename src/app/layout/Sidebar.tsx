@@ -4,6 +4,7 @@ import { NavLink } from 'react-router';
 import { useSession } from '@/shared/auth/session-store';
 import {
   applyTheme,
+  getThemeStorage,
   persistTheme,
   readStoredTheme,
   resolveInitialTheme,
@@ -21,7 +22,7 @@ function currentTheme(): Theme {
   const prefersDark =
     typeof window.matchMedia === 'function' &&
     window.matchMedia('(prefers-color-scheme: dark)').matches;
-  return resolveInitialTheme(readStoredTheme(localStorage), prefersDark);
+  return resolveInitialTheme(readStoredTheme(getThemeStorage()), prefersDark);
 }
 
 function ThemeToggle() {
@@ -31,7 +32,7 @@ function ThemeToggle() {
 
   function toggle() {
     applyTheme(next);
-    persistTheme(next, localStorage);
+    persistTheme(next, getThemeStorage());
     setTheme(next);
   }
 
@@ -80,7 +81,7 @@ export function Sidebar() {
 
       <div className={styles.footer}>
         {landingUrl ? (
-          <a href={landingUrl} target="_blank" rel="noopener" className={styles.action}>
+          <a href={landingUrl} target="_blank" rel="noopener noreferrer" className={styles.action}>
             <ArrowUpRight size={18} className={styles.icon} aria-hidden="true" />
             Xem website
           </a>

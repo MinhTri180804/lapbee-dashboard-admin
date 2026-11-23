@@ -131,18 +131,23 @@ describe('SetupPasswordPage', () => {
         return new HttpResponse(null, { status: 204 });
       }),
     );
-    window.history.replaceState(null, '', '/setup-password#token=abc');
     const user = userEvent.setup();
-    renderWithProviders(<SetupPasswordPage />, {
-      route: '/setup-password#token=abc',
+    const { router } = renderWithProviders(<SetupPasswordPage />, {
+      route: '/setup-password?ref=mail#token=abc',
       routes: destinations,
+      history: 'browser',
     });
     expect(window.location.hash).toBe('');
+    // The router's own location loses the hash too, and keeps path and query.
+    expect(router.state.location.hash).toBe('');
+    expect(router.state.location.pathname).toBe('/setup-password');
+    expect(router.state.location.search).toBe('?ref=mail');
     await fillSetup(user);
     await waitFor(() => {
       expect(body).toEqual({ token: 'abc', newPassword: PASSWORD });
     });
     expect(url).not.toContain('abc');
+    window.history.replaceState(null, '', '/');
   });
 
   it('rejects a password shorter than 12 characters', async () => {

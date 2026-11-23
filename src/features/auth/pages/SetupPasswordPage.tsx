@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useState } from 'react';
+import { useLayoutEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useLocation, useNavigate } from 'react-router';
 import { z } from 'zod';
@@ -34,7 +34,7 @@ function readToken(hash: string): string | null {
 }
 
 export function SetupPasswordPage() {
-  const { hash } = useLocation();
+  const { pathname, search, hash } = useLocation();
   const navigate = useNavigate();
   const toast = useToast();
   const setup = useSetupPassword();
@@ -52,9 +52,11 @@ export function SetupPasswordPage() {
     defaultValues: { newPassword: '', confirm: '' },
   });
 
-  useEffect(() => {
-    window.history.replaceState(null, '', window.location.pathname + window.location.search);
-  }, []);
+  // Drop the token from the URL before paint, through the router so its state stays in sync.
+  useLayoutEffect(() => {
+    if (hash === '') return;
+    void navigate({ pathname, search }, { replace: true });
+  }, [hash, pathname, search, navigate]);
 
   if (token === null || expired) {
     return (
