@@ -90,12 +90,13 @@ describe('useBootstrapSession', () => {
   });
 
   it('goes anonymous on other errors', async () => {
-    const { hit, off } = bootstrapWith(() => problem(500, 'INTERNAL'));
+    const { hit, expired, off } = bootstrapWith(() => problem(500, 'INTERNAL'));
     await waitFor(() => {
       expect(sessionStore.get().status).toBe('anonymous');
     });
     off();
     expect(hit).toHaveBeenCalledTimes(1);
+    expect(expired).not.toHaveBeenCalled();
   });
 });
 
