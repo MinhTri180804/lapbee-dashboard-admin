@@ -1,4 +1,4 @@
-import { http as mock, HttpResponse } from 'msw';
+import { delay, http as mock, HttpResponse } from 'msw';
 import { describe, expect, it, vi } from 'vitest';
 import { sessionStore } from '@/shared/auth/session-store';
 import { meFixture } from '@/test/fixtures/auth';
@@ -11,6 +11,10 @@ import { isReauthPending, rejectReauth, resolveReauth } from './reauth-coordinat
 
 const BASE = 'http://localhost/admin/v1';
 const api = createHttp(BASE);
+
+function signIn(csrfToken = 't1') {
+  sessionStore.signIn({ user: meFixture.user, permissions: ['*'], csrfToken });
+}
 
 function listenSessionExpired() {
   const fn = vi.fn();
@@ -105,7 +109,7 @@ describe('http client', () => {
         return tokens.length === 1 ? problem(403, 'CSRF_FAILED') : HttpResponse.json({ id: 'p1' });
       }),
     );
-    sessionStore.setCsrfToken('t1');
+    signIn('t1');
 
     const res = await api.post('/posts', {});
 
@@ -127,6 +131,7 @@ describe('http client', () => {
         return problem(403, 'CSRF_FAILED');
       }),
     );
+    signIn();
 
     await expect(api.post('/posts', {})).rejects.toMatchObject({ code: 'CSRF_FAILED' });
     expect(posts).toBe(2);
@@ -149,7 +154,7 @@ describe('http client', () => {
           : problem(403, 'CSRF_FAILED');
       }),
     );
-    sessionStore.setCsrfToken('t1');
+    signIn('t1');
 
     await Promise.all([api.post('/things/a', {}), api.post('/things/b', {})]);
 
@@ -273,9 +278,45 @@ describe('http client', () => {
         }),
         mock.post(`${BASE}/posts`, () => problem(403, 'CSRF_FAILED')),
       );
+      signIn();
 
       await expect(api.post('/posts', {})).rejects.toBeInstanceOf(ProblemError);
       expect(mes).toBe(1);
     },
   );
+
+  it('CSRF_FAILED khi chưa đăng nhập thì ném ProblemError, không gọi /auth/me', async () => {
+    let mes = 0;
+    let posts = 0;
+    server.use(
+      mock.get(`${BASE}/auth/me`, () => {
+        mes += 1;
+        return problem(401, 'UNAUTHENTICATED');
+      }),
+      mock.post(`${BASE}/auth/login`, () => {
+        posts += 1;
+        return problem(403, 'CSRF_FAILED');
+      }),
+    );
+    sessionStore.signOut();
+
+    const error: unknown = await api.post('/auth/login', {}).catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(ProblemError);
+    expect(error).toMatchObject({ code: 'CSRF_FAILED', status: 403 });
+    expect(mes).toBe(0);
+    expect(posts).toBe(1);
+  });
+
+  it('mặc định timeout 15000 ms; quá hạn thì là NetworkError', async () => {
+    expect(api.defaults.timeout).toBe(15_000);
+    server.use(
+      mock.get(`${BASE}/slow`, async () => {
+        await delay(200);
+        return HttpResponse.json({});
+      }),
+    );
+
+    await expect(api.get('/slow', { timeout: 20 })).rejects.toBeInstanceOf(NetworkError);
+  });
 });

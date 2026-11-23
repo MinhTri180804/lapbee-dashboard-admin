@@ -94,6 +94,16 @@ describe('toAppError', () => {
     expect(toAppError(axiosErrorWith())).toBeInstanceOf(NetworkError);
   });
 
+  it.each(['ECONNABORTED', 'ETIMEDOUT'])(
+    'timeout (%s) không có response trả NetworkError',
+    (code) => {
+      const error = new AxiosError('timeout of 15000ms exceeded', code, {
+        headers: new AxiosHeaders(),
+      });
+      expect(toAppError(error)).toBeInstanceOf(NetworkError);
+    },
+  );
+
   it('giữ nguyên AppError đã có', () => {
     const cancelled = new ReauthCancelledError();
     expect(toAppError(cancelled)).toBe(cancelled);

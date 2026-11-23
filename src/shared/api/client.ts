@@ -14,9 +14,13 @@ declare module 'axios' {
   }
 }
 
+/** A request with no response after this long fails as a `NetworkError`. */
+export const HTTP_TIMEOUT_MS = 15_000;
+
 export function createHttp(baseURL = '/admin/v1'): AxiosInstance {
   const instance = axios.create({
     baseURL,
+    timeout: HTTP_TIMEOUT_MS,
     withCredentials: true,
     headers: { Accept: 'application/json' },
   });
