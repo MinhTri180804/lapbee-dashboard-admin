@@ -55,6 +55,12 @@ Xem `docs/adr/0004-generated-dto-types.md`.
 - `scripts/`: `gen-api.mjs`, `check-api.mjs`.
 - `docs/`: tài liệu thiết kế.
 
+## Nhánh và quy trình merge
+
+- `main`: nhánh deploy. Chỉ merge vào `main` khi đã xong một version và đã test trực tiếp.
+- `develop`: nhánh tích hợp. Mỗi giai đoạn hoặc tính năng làm trên nhánh `feat/...` rồi mở PR vào `develop`.
+- Không mở PR thẳng từ nhánh tính năng vào `main`.
+
 ## Tài liệu
 
 - Thiết kế: `docs/superpowers/specs/2026-11-23-lapbee-dashboard-design.md`
