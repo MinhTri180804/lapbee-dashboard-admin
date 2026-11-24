@@ -66,3 +66,11 @@ export const siteRepo = {
     ).data;
   },
 };
+
+export type UserList = Res<'/admin/v1/users', 'get', 200>;
+
+export const usersRepo = {
+  async list(): Promise<UserList> {
+    return (await http.get<UserList>('/users', { params: { perPage: 100 } })).data;
+  },
+};
