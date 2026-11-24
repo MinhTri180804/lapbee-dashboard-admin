@@ -2,11 +2,17 @@ import { fileURLToPath } from 'node:url';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
 
+/**
+ * Origin of the backend's local media driver (`MEDIA_PUBLIC_BASE_URL`), whose image URLs are
+ * absolute. Dev/preview only: production serves media from Cloudinary (docs/csp.md).
+ */
+const LOCAL_MEDIA_ORIGIN = 'http://localhost:3000';
+
 const csp = [
   "default-src 'self'",
   "script-src 'self'",
   "style-src 'self'",
-  "img-src 'self' data: blob: https://res.cloudinary.com",
+  `img-src 'self' data: blob: https://res.cloudinary.com ${LOCAL_MEDIA_ORIGIN}`,
   "font-src 'self'",
   "connect-src 'self'",
   "object-src 'none'",
