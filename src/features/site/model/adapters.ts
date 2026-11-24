@@ -43,7 +43,8 @@ function deepEqual(a: unknown, b: unknown): boolean {
   const kb = Object.keys(b);
   if (ka.length !== kb.length) return false;
   return ka.every(
-    (k) => k in b && deepEqual((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k]),
+    (k) =>
+      k in b && deepEqual((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k]),
   );
 }
 

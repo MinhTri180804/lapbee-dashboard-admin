@@ -93,10 +93,28 @@ describe('settings form', () => {
 
 describe('SETTINGS_TAB', () => {
   it('routes general fields and home fields', () => {
-    for (const k of ['name', 'phone', 'email', 'hours', 'address', 'seoTitle', 'seoDesc'] as const) {
+    for (const k of [
+      'name',
+      'phone',
+      'email',
+      'hours',
+      'address',
+      'seoTitle',
+      'seoDesc',
+    ] as const) {
       expect(SETTINGS_TAB[k]).toBe('general');
     }
-    for (const k of ['showEyebrow', 'eyebrow', 'h1a', 'h1b', 'h1hl', 'lead', 'cta1', 'cta2', 'stats'] as const) {
+    for (const k of [
+      'showEyebrow',
+      'eyebrow',
+      'h1a',
+      'h1b',
+      'h1hl',
+      'lead',
+      'cta1',
+      'cta2',
+      'stats',
+    ] as const) {
       expect(SETTINGS_TAB[k]).toBe('home');
     }
   });
