@@ -37,6 +37,7 @@ export const SETTINGS_LABEL: Record<keyof Settings, string> = {
 
 export const NO_UPDATE_TITLE = 'Bạn không có quyền sửa website';
 export const NO_PUBLISH_TITLE = 'Bạn không có quyền xuất bản website';
+export const NO_RESTORE_TITLE = 'Bạn không có quyền khôi phục bản nháp';
 
 export type ItemMeta = {
   /** Site tab label, e.g. the back button. */

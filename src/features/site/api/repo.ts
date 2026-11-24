@@ -11,7 +11,8 @@ import type {
 export type PublishResult = Res<'/admin/v1/site/publish', 'post', 200>;
 export type PublicationList = Res<'/admin/v1/site/publications', 'get', 200>;
 export type PublicationDto = PublicationList['items'][number];
-export type CreateItemResult = { id: string; site: SiteDto };
+/** Same shape for every kind: `{ id, site }`. */
+export type CreateItemResult = Res<'/admin/v1/site/services', 'post', 201>;
 
 export const siteRepo = {
   async get(): Promise<SiteDto> {

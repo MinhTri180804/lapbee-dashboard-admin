@@ -12,13 +12,12 @@ import {
   useToast,
   type DataTableColumn,
 } from '@/shared/ui';
+import { NO_RESTORE_TITLE } from '../components/labels';
 import { usePublications } from '../hooks/use-publications';
 import { useRestorePublication } from '../hooks/use-restore-publication';
 import { useSite } from '../hooks/use-site';
 import { useUserNames } from '../hooks/use-user-names';
 import styles from './SiteHistoryPage.module.css';
-
-const NO_RESTORE_TITLE = 'Bạn không có quyền khôi phục bản nháp';
 
 type PublicationDto = NonNullable<ReturnType<typeof usePublications>['data']>['items'][number];
 
@@ -100,10 +99,14 @@ export function SiteHistoryPage() {
   return (
     <div className={styles.page}>
       <PageHeader eyebrow="Thông tin website · Lịch sử" title="Lịch sử xuất bản" />
-      {list.isPending ? (
-        <div className={styles.loading}>
-          <Spinner />
-        </div>
+      {list.data === undefined ? (
+        list.isError ? (
+          <p role="alert">Không tải được lịch sử xuất bản. Thử lại sau.</p>
+        ) : (
+          <div className={styles.loading}>
+            <Spinner />
+          </div>
+        )
       ) : (
         <>
           <DataTable

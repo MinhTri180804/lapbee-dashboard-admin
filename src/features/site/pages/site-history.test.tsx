@@ -1,10 +1,12 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http as mock, HttpResponse } from 'msw';
 import { describe, expect, it } from 'vitest';
 import { siteFixture } from '@/test/fixtures/site';
+import { problem } from '@/test/msw/problem';
 import { server } from '@/test/msw/server';
 import { renderWithProviders } from '@/test/render';
+import { siteKeys } from '../model/keys';
 import { SiteHistoryPage } from './SiteHistoryPage';
 
 const BASE = 'http://localhost/admin/v1';
@@ -84,6 +86,27 @@ describe('SiteHistoryPage', () => {
     mockUsers();
     renderPage();
     expect(await screen.findByText('Chưa xuất bản lần nào.')).toBeInTheDocument();
+  });
+
+  it('shows an error, not the empty state, when the list fails to load', async () => {
+    mockList();
+    mockUsers();
+    server.use(mock.get(`${BASE}/site/publications`, () => problem(500, 'INTERNAL')));
+    renderPage();
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Không tải được lịch sử xuất bản. Thử lại sau.',
+    );
+    expect(screen.queryByText('Chưa xuất bản lần nào.')).not.toBeInTheDocument();
+  });
+
+  it('does not refetch /users when the site is reloaded', async () => {
+    mockList();
+    const calls = mockUsers();
+    const { queryClient } = renderPage();
+    expect(await screen.findByText('Lê Minh')).toBeInTheDocument();
+    expect(calls.n).toBe(1);
+    await act(() => queryClient.invalidateQueries({ queryKey: siteKeys.detail }));
+    expect(calls.n).toBe(1);
   });
 
   it('restores with the current draftHash then navigates and toasts', async () => {
