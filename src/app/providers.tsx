@@ -7,6 +7,7 @@ import { isReauthPending, rejectReauth } from '@/shared/api/reauth-coordinator';
 import { sessionStore } from '@/shared/auth/session-store';
 import { ToastProvider, useToast } from '@/shared/ui';
 import { ConflictDialog } from './ConflictDialog';
+import { AppScrollRestoration } from './scroll-restoration';
 
 /** Providers that do not need the router. The router renders inside them. */
 export function AppProviders({
@@ -71,5 +72,10 @@ export function AppEventsBridge() {
 /** Root route element: restores the session once, then bridges app events. */
 export function AppRoot() {
   useBootstrapSession();
-  return <AppEventsBridge />;
+  return (
+    <>
+      <AppScrollRestoration />
+      <AppEventsBridge />
+    </>
+  );
 }
