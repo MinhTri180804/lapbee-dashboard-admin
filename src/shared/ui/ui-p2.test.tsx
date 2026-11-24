@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { Card, CharCount, ConfirmDialog, Select, Switch, Tabs, TextArea } from '.';
+import { Card, CharCount, ConfirmDialog, Select, Switch, Tabs, tabPanelProps, TextArea } from '.';
 
 const items = [
   { value: 'a', label: 'Một' },
@@ -13,7 +13,7 @@ const items = [
 describe('Tabs', () => {
   it('moves with arrow keys and calls onChange', async () => {
     const onChange = vi.fn();
-    render(<Tabs label="Mục" items={items} value="a" onChange={onChange} />);
+    render(<Tabs label="Mục" idPrefix="t" items={items} value="a" onChange={onChange} />);
     expect(screen.getByRole('tablist', { name: 'Mục' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Một' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByRole('tab', { name: 'Hai' })).toHaveAttribute('aria-selected', 'false');
@@ -24,6 +24,32 @@ describe('Tabs', () => {
     expect(onChange).toHaveBeenLastCalledWith('a');
     await userEvent.keyboard('{ArrowLeft}');
     expect(onChange).toHaveBeenLastCalledWith('c');
+  });
+
+  it('supports Home/End and roving tabIndex', async () => {
+    const onChange = vi.fn();
+    render(<Tabs label="Mục" idPrefix="t" items={items} value="b" onChange={onChange} />);
+    expect(screen.getByRole('tab', { name: 'Hai' })).toHaveAttribute('tabindex', '0');
+    expect(screen.getByRole('tab', { name: 'Một' })).toHaveAttribute('tabindex', '-1');
+    expect(screen.getByRole('tab', { name: 'Ba' })).toHaveAttribute('tabindex', '-1');
+    screen.getByRole('tab', { name: 'Hai' }).focus();
+    await userEvent.keyboard('{End}');
+    expect(onChange).toHaveBeenLastCalledWith('c');
+    await userEvent.keyboard('{Home}');
+    expect(onChange).toHaveBeenLastCalledWith('a');
+  });
+
+  it('pairs each tab with its panel', () => {
+    render(
+      <>
+        <Tabs label="Mục" idPrefix="t" items={items} value="b" onChange={() => {}} />
+        <div {...tabPanelProps('t', 'b')}>Nội dung</div>
+      </>,
+    );
+    const tab = screen.getByRole('tab', { name: 'Hai' });
+    const panel = screen.getByRole('tabpanel', { name: 'Hai' });
+    expect(tab).toHaveAttribute('aria-controls', panel.id);
+    expect(panel).toHaveAttribute('aria-labelledby', tab.id);
   });
 });
 
@@ -69,13 +95,17 @@ describe('TextArea', () => {
 });
 
 describe('Card', () => {
-  it('renders as a button when asked', () => {
+  it('renders as a button and fires onClick', async () => {
+    const onClick = vi.fn();
     render(
-      <Card as="button" interactive padding={16}>
+      <Card as="button" padding={16} onClick={onClick}>
         Nội dung
       </Card>,
     );
-    expect(screen.getByRole('button', { name: 'Nội dung' })).toHaveAttribute('type', 'button');
+    const btn = screen.getByRole('button', { name: 'Nội dung' });
+    expect(btn).toHaveAttribute('type', 'button');
+    await userEvent.click(btn);
+    expect(onClick).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -113,6 +143,33 @@ describe('ConfirmDialog', () => {
       />,
     );
     expect(screen.getByRole('button', { name: 'Đồng ý' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Huỷ' })).toBeEnabled();
+  });
+
+  it('uses the danger variant for tone=danger and primary otherwise', () => {
+    const { rerender } = render(
+      <ConfirmDialog
+        open
+        tone="danger"
+        title="T"
+        body="B"
+        confirmLabel="Xoá"
+        onConfirm={() => {}}
+        onCancel={() => {}}
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'Xoá' }).className).toMatch(/danger/);
+    rerender(
+      <ConfirmDialog
+        open
+        title="T"
+        body="B"
+        confirmLabel="Xoá"
+        onConfirm={() => {}}
+        onCancel={() => {}}
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'Xoá' }).className).toMatch(/primary/);
   });
 });
 

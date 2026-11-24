@@ -1,4 +1,4 @@
-import { useId, useRef } from 'react';
+import { useRef } from 'react';
 import type { KeyboardEvent } from 'react';
 import { cx } from './cx';
 import styles from './Tabs.module.css';
@@ -8,11 +8,20 @@ export type TabsProps = {
   value: string;
   onChange: (value: string) => void;
   label: string;
+  /** Prefix for tab/panel ids; pair panels with `tabPanelProps(idPrefix, value)`. */
+  idPrefix: string;
   className?: string;
 };
 
-export function Tabs({ items, value, onChange, label, className }: TabsProps) {
-  const baseId = useId();
+export function tabPanelProps(idPrefix: string, value: string) {
+  return {
+    id: `${idPrefix}-panel-${value}`,
+    role: 'tabpanel' as const,
+    'aria-labelledby': `${idPrefix}-tab-${value}`,
+  };
+}
+
+export function Tabs({ items, value, onChange, label, idPrefix, className }: TabsProps) {
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const move = (index: number) => {
@@ -48,7 +57,8 @@ export function Tabs({ items, value, onChange, label, className }: TabsProps) {
             ref={(el) => {
               refs.current[i] = el;
             }}
-            id={`${baseId}-${item.value}`}
+            id={`${idPrefix}-tab-${item.value}`}
+            aria-controls={`${idPrefix}-panel-${item.value}`}
             type="button"
             role="tab"
             aria-selected={selected}
