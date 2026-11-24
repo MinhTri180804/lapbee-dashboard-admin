@@ -13,8 +13,10 @@ import { useLogin } from '../hooks/use-login';
 import styles from './auth-pages.module.css';
 
 const REQUIRED = 'Không được để trống.';
+const INVALID_EMAIL = 'Email không hợp lệ.';
+
 const schema = z.object({
-  email: z.string().trim().min(1, REQUIRED),
+  email: z.string().trim().min(1, REQUIRED).pipe(z.email(INVALID_EMAIL)),
   password: z.string().min(1, REQUIRED),
 });
 type LoginForm = z.infer<typeof schema>;

@@ -52,6 +52,40 @@ describe('LoginPage', () => {
     expect(hit).not.toHaveBeenCalled();
   });
 
+  it('rejects a malformed email without sending a request', async () => {
+    const hit = vi.fn();
+    server.use(
+      mock.post(`${BASE}/auth/login`, () => {
+        hit();
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    const user = userEvent.setup();
+    renderWithProviders(<LoginPage />, { route: '/login', routes: destinations.slice(0, 1) });
+    await user.type(screen.getByLabelText('Email'), 'khong-phai-email');
+    await user.type(screen.getByLabelText('Mật khẩu'), 'mat-khau-bat-ky');
+    await user.click(screen.getByRole('button', { name: 'Đăng nhập' }));
+    expect(await screen.findByText('Email không hợp lệ.')).toBeInTheDocument();
+    expect(hit).not.toHaveBeenCalled();
+  });
+
+  it('accepts an email with surrounding spaces', async () => {
+    let sent: unknown;
+    server.use(
+      mock.post(`${BASE}/auth/login`, async ({ request }) => {
+        sent = await request.json();
+        return problem(401, 'INVALID_CREDENTIALS');
+      }),
+    );
+    const user = userEvent.setup();
+    renderWithProviders(<LoginPage />, { route: '/login' });
+    await user.type(screen.getByLabelText('Email'), '  admin@lapbee.test  ');
+    await user.type(screen.getByLabelText('Mật khẩu'), 'mat-khau-bat-ky');
+    await user.click(screen.getByRole('button', { name: 'Đăng nhập' }));
+    await screen.findByRole('alert');
+    expect(sent).toMatchObject({ email: 'admin@lapbee.test' });
+  });
+
   it('shows INVALID_CREDENTIALS in an alert and stays on /login', async () => {
     server.use(mock.post(`${BASE}/auth/login`, () => problem(401, 'INVALID_CREDENTIALS')));
     const user = userEvent.setup();
