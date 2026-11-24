@@ -6,6 +6,7 @@ import { siteFixture } from '@/test/fixtures/site';
 import { problem } from '@/test/msw/problem';
 import { server } from '@/test/msw/server';
 import { renderWithProviders } from '@/test/render';
+import { siteKeys } from '../model/keys';
 import type { SiteDto } from '../model/types';
 import { SitePage } from './SitePage';
 
@@ -168,6 +169,127 @@ describe('SitePage', () => {
     await user.click(screen.getByRole('button', { name: 'Lưu nháp' }));
     await screen.findByText('Đã lưu nháp');
     expect(body).toEqual({ version: 7, showEyebrow: false });
+  });
+
+  it('keeps typing done while a save is in flight', async () => {
+    mockSite(cleanSite);
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((r) => {
+      release = r;
+    });
+    const bodies: unknown[] = [];
+    const saved = {
+      ...cleanSite,
+      dirty: true,
+      version: 8,
+      draft: { ...cleanSite.draft, settings: { ...cleanSite.draft.settings, phone: '0909' } },
+    };
+    server.use(
+      mock.patch(`${BASE}/site/settings`, async ({ request }) => {
+        bodies.push(await request.json());
+        if (bodies.length === 1) await gate;
+        return HttpResponse.json(saved);
+      }),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await loaded();
+    const phone = screen.getByLabelText('Hotline');
+    await user.clear(phone);
+    await user.type(phone, '0909');
+    await user.click(screen.getByRole('button', { name: 'Lưu nháp' }));
+    await user.type(screen.getByLabelText('Giờ làm việc'), ' T7');
+    release();
+    await screen.findByText('Đã lưu nháp');
+    expect(screen.getByLabelText('Giờ làm việc')).toHaveValue('08:00 - 20:00 T7');
+    expect(screen.getByLabelText('Hotline')).toHaveValue('0909');
+    const save = screen.getByRole('button', { name: 'Lưu nháp' });
+    await waitFor(() => {
+      expect(save).toBeEnabled();
+    });
+    await user.click(save);
+    await waitFor(() => {
+      expect(bodies).toHaveLength(2);
+    });
+    expect(bodies[1]).toEqual({ version: 8, hours: '08:00 - 20:00 T7' });
+  });
+
+  it('rebases typed edits onto the reloaded version after a conflict', async () => {
+    let current: Site = cleanSite;
+    server.use(mock.get(`${BASE}/site`, () => HttpResponse.json(current)));
+    const bodies: unknown[] = [];
+    server.use(
+      mock.patch(`${BASE}/site/settings`, async ({ request }) => {
+        bodies.push(await request.json());
+        if (bodies.length === 1) return problem(409, 'VERSION_CONFLICT');
+        return HttpResponse.json({ ...current, version: 10 });
+      }),
+    );
+    const user = userEvent.setup();
+    const { queryClient } = renderPage();
+    await loaded();
+    await user.type(screen.getByLabelText('Hotline'), '9');
+    await user.click(screen.getByRole('button', { name: 'Lưu nháp' }));
+    await waitFor(() => {
+      expect(bodies).toHaveLength(1);
+    });
+    // Someone else changed the email; the reload brings version 9.
+    current = {
+      ...cleanSite,
+      version: 9,
+      draft: {
+        ...cleanSite.draft,
+        settings: { ...cleanSite.draft.settings, email: 'new@lapbee.test' },
+      },
+    };
+    await act(() => queryClient.invalidateQueries({ queryKey: siteKeys.detail }));
+    await waitFor(() => {
+      expect(screen.getByLabelText('Email')).toHaveValue('new@lapbee.test');
+    });
+    expect(screen.getByLabelText('Hotline')).toHaveValue('1900 12349');
+    expect(screen.getByText('Chưa lưu')).toBeInTheDocument();
+    expect(bodies).toHaveLength(1);
+    await user.click(screen.getByRole('button', { name: 'Lưu nháp' }));
+    await waitFor(() => {
+      expect(bodies).toHaveLength(2);
+    });
+    expect(bodies[1]).toEqual({ version: 9, phone: '1900 12349' });
+  });
+
+  it('does not ask before leaving once the edits are saved', async () => {
+    mockSite(cleanSite);
+    server.use(
+      mock.patch(`${BASE}/site/settings`, () =>
+        HttpResponse.json({ ...cleanSite, dirty: true, version: 8 }),
+      ),
+    );
+    const user = userEvent.setup();
+    const { router } = renderPage();
+    await loaded();
+    await user.type(screen.getByLabelText('Hotline'), '9');
+    await user.click(screen.getByRole('button', { name: 'Lưu nháp' }));
+    await screen.findByText('Đã lưu nháp');
+    await act(() => router.navigate('/elsewhere'));
+    expect(await screen.findByText('Trang khác')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: 'Bỏ thay đổi chưa lưu?' })).not.toBeInTheDocument();
+  });
+
+  it('puts a stats.0.v validation error on the first stat value', async () => {
+    mockSite();
+    server.use(
+      mock.patch(`${BASE}/site/settings`, () =>
+        problem(422, 'VALIDATION_FAILED', {
+          errors: [{ path: 'stats.0.v', message: 'Cần giá trị.' }],
+        }),
+      ),
+    );
+    const user = userEvent.setup();
+    renderPage({ route: '/site?tab=home' });
+    const v = await screen.findByLabelText('Số liệu 01 · giá trị');
+    await user.clear(v);
+    await user.click(screen.getByRole('button', { name: 'Lưu nháp' }));
+    expect(await screen.findByText('Cần giá trị.')).toBeInTheDocument();
+    expect(screen.getByLabelText('Số liệu 01 · giá trị')).toHaveAttribute('aria-invalid', 'true');
   });
 
   it('maps VALIDATION_FAILED from the PATCH onto fields', async () => {

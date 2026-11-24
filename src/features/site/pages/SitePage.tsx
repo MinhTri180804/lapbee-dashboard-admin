@@ -32,6 +32,27 @@ const KNOWN_FIELDS: readonly string[] = [
   ...[0, 1, 2, 3].flatMap((i) => [`stats.${String(i)}.v`, `stats.${String(i)}.l`]),
 ];
 
+/**
+ * `next` with every leaf the user changed (`current` vs `previous`) carried over. Leaves are the
+ * top-level settings plus each stats cell, so a server change in another cell is not lost.
+ */
+function keepEdits(next: SettingsForm, previous: SettingsForm, current: SettingsForm) {
+  const out: SettingsForm = { ...next, stats: next.stats.map((c) => ({ ...c })) };
+  for (const key of Object.keys(next) as (keyof SettingsForm)[]) {
+    if (key !== 'stats' && current[key] !== previous[key]) {
+      Object.assign(out, { [key]: current[key] });
+    }
+  }
+  out.stats.forEach((cell, i) => {
+    const was = previous.stats[i];
+    const now = current.stats[i];
+    if (!now) return;
+    if (now.v !== was?.v) cell.v = now.v;
+    if (now.l !== was?.l) cell.l = now.l;
+  });
+  return out;
+}
+
 /** The settings values and version the form was opened (or last reset) with. */
 type Baseline = { initial: SettingsForm; version: number };
 
@@ -68,6 +89,7 @@ function SiteEditor({ site }: { site: SiteView }) {
   /** Set after a version conflict: the reloaded settings replace the stale edits. */
   const resetOnNextVersion = useRef(false);
 
+  /** Replaces the form with server settings, discarding edits (mount, clean form, revert). */
   const resetTo = useCallback(
     (settings: Settings, version: number) => {
       const initial = settingsToForm(settings);
@@ -78,16 +100,41 @@ function SiteEditor({ site }: { site: SiteView }) {
     [form],
   );
 
-  // A new server version replaces the form only while the user has nothing pending (P2-3).
+  /**
+   * Moves the baseline to new server settings but keeps every value the user changed since
+   * `since`: the values sent (after a save), or the old baseline (after a conflict reload).
+   * Never sends anything.
+   *
+   * Not `reset(…, { keepDirtyValues: true })`: in RHF 7.92 that sets `isDirty` to false and
+   * keeps stale `dirtyFields`. The second reset with `keepDefaultValues` recomputes both.
+   */
+  const rebaseTo = useCallback(
+    (settings: Settings, version: number, since?: SettingsForm) => {
+      const from = since ?? baseline.current?.initial;
+      const initial = settingsToForm(settings);
+      const merged = from ? keepEdits(initial, from, form.getValues()) : initial;
+      baseline.current = { initial, version };
+      resetOnNextVersion.current = false;
+      form.reset(initial);
+      form.reset(merged, { keepDefaultValues: true });
+    },
+    [form],
+  );
+
+  // A new server version replaces a clean form (P2-3). A dirty form keeps its baseline, so a
+  // stale save still gets its 409, except right after a conflict: then the reload is rebased.
   useEffect(() => {
     const b = baseline.current;
     if (b?.version === site.settingsVersion) return;
-    if (b && isDirty && !resetOnNextVersion.current) return;
-    resetTo(site.draft.settings, site.settingsVersion);
-  }, [site.settingsVersion, site.draft.settings, isDirty, resetTo]);
+    if (!b || !isDirty) {
+      resetTo(site.draft.settings, site.settingsVersion);
+    } else if (resetOnNextVersion.current) {
+      rebaseTo(site.draft.settings, site.settingsVersion);
+    }
+  }, [site.settingsVersion, site.draft.settings, isDirty, resetTo, rebaseTo]);
 
-  const resetFromDto = (dto: SiteDto) => {
-    resetTo(dto.draft.settings, dto.version);
+  const rebaseFromDto = (dto: SiteDto, sent: SettingsForm) => {
+    rebaseTo(dto.draft.settings, dto.version, sent);
   };
 
   const currentPatch = () => {
@@ -114,10 +161,11 @@ function SiteEditor({ site }: { site: SiteView }) {
   const onSaveDraft = () => {
     const patch = currentPatch();
     if (!patch) return;
+    const sent = structuredClone(form.getValues());
     form.clearErrors();
     save.mutate(patch, {
       onSuccess: (dto) => {
-        resetFromDto(dto);
+        rebaseFromDto(dto, sent);
         toast.show({ kind: 'success', title: 'Đã lưu nháp' });
       },
       onError: handleWriteError,
@@ -129,12 +177,13 @@ function SiteEditor({ site }: { site: SiteView }) {
   const onPublish = () => {
     const patch = isDirty ? currentPatch() : null;
     const openedVersion = baseline.current?.version;
+    const sent = structuredClone(form.getValues());
     form.clearErrors();
     publish.mutate(
       { settingsPatch: patch, draftHash: site.draftHash },
       {
         onSuccess: ({ site: dto }) => {
-          resetFromDto(dto);
+          rebaseFromDto(dto, sent);
           toast.show({
             kind: 'success',
             title: 'Đã xuất bản thay đổi',
@@ -144,7 +193,7 @@ function SiteEditor({ site }: { site: SiteView }) {
         onError: (error) => {
           // The PATCH may have succeeded before publish failed: the edits are saved now.
           const cached = qc.getQueryData<SiteDto>(siteKeys.detail);
-          if (patch && cached && cached.version !== openedVersion) resetFromDto(cached);
+          if (patch && cached && cached.version !== openedVersion) rebaseFromDto(cached, sent);
           if (isProblem(error, 'NOTHING_TO_PUBLISH')) {
             toast.show({ kind: 'info', title: 'Không có thay đổi để xuất bản' });
           } else if (isProblem(error, 'SITE_INVALID')) {
@@ -163,7 +212,7 @@ function SiteEditor({ site }: { site: SiteView }) {
     revert.mutate(site.draftHash, {
       onSuccess: (dto) => {
         setConfirmRevert(false);
-        resetFromDto(dto);
+        resetTo(dto.draft.settings, dto.version);
         toast.show({ kind: 'success', title: 'Đã hoàn tác về bản đã xuất bản' });
       },
       onError: () => {
