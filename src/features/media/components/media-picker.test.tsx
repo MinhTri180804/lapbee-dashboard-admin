@@ -134,6 +134,16 @@ describe('MediaPicker', () => {
     expect(onPick).not.toHaveBeenCalled();
   });
 
+  it('opens a wide dialog that holds the upload control', async () => {
+    server.use(mock.get(`${BASE}/media`, () => HttpResponse.json(mediaListFixture)));
+    setup(UPLOAD);
+    const dialog = screen.getByRole('dialog', { name: 'Chọn ảnh' });
+    // jsdom has no layout: the width itself is CSS (`.dialog[data-size='wide']`, a fluid body).
+    expect(dialog).toHaveAttribute('data-size', 'wide');
+    expect(within(dialog).getByLabelText('Tải ảnh lên')).toBeInTheDocument();
+    await screen.findByAltText('anh-1.jpg');
+  });
+
   it('hides the upload button without media.upload', async () => {
     server.use(mock.get(`${BASE}/media`, () => HttpResponse.json(mediaListFixture)));
     setup(READ);

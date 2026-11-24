@@ -7,6 +7,9 @@
   color: var(--fg-1);
   box-shadow: var(--shadow-3);
 }
+.dialog[data-size='wide'] {
+  width: min(720px, calc(100vw - 2 * var(--space-4)));
+}
 .dialog::backdrop {
   background: var(--scrim);
 }
@@ -28,6 +31,7 @@
   right: var(--space-4);
 }
 .body {
+  min-width: 0;
   font-size: var(--fs-14);
   color: var(--fg-2);
 }

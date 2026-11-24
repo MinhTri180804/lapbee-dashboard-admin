@@ -10,9 +10,11 @@ export type DialogProps = {
   onClose: () => void;
   children?: ReactNode;
   footer?: ReactNode;
+  /** `wide` (720px) for content such as a media grid; default 480px. */
+  size?: 'default' | 'wide';
 };
 
-export function Dialog({ open, title, onClose, children, footer }: DialogProps) {
+export function Dialog({ open, title, onClose, children, footer, size = 'default' }: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const returnFocus = useRef<HTMLElement | null>(null);
@@ -43,6 +45,7 @@ export function Dialog({ open, title, onClose, children, footer }: DialogProps) 
     <dialog
       ref={ref}
       className={styles.dialog}
+      data-size={size === 'wide' ? 'wide' : undefined}
       aria-labelledby={titleId}
       onCancel={(e) => {
         // `open` prop stays the source of truth.

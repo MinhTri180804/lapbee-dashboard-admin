@@ -57,7 +57,7 @@ export function MediaPicker({ open, onClose, onPick, title = 'Chọn ảnh' }: M
   }
 
   return (
-    <Dialog open={open} title={title} onClose={onClose}>
+    <Dialog open={open} title={title} onClose={onClose} size="wide">
       {!canRead ? (
         <p>Bạn không có quyền xem thư viện ảnh.</p>
       ) : (
