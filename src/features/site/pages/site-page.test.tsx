@@ -319,6 +319,105 @@ describe('SitePage', () => {
     });
   }
 
+  it('keeps the edits when a refetch lands during "Lưu & xuất bản" and the PATCH conflicts', async () => {
+    let current: Site = cleanSite;
+    server.use(mock.get(`${BASE}/site`, () => HttpResponse.json(current)));
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((r) => {
+      release = r;
+    });
+    const bodies: unknown[] = [];
+    let publishes = 0;
+    server.use(
+      mock.patch(`${BASE}/site/settings`, async ({ request }) => {
+        bodies.push(await request.json());
+        if (bodies.length === 1) {
+          await gate;
+          return problem(409, 'VERSION_CONFLICT');
+        }
+        return HttpResponse.json({ ...current, version: 10 });
+      }),
+      mock.post(`${BASE}/site/publish`, () => {
+        publishes += 1;
+        return HttpResponse.json({ publication, site: { ...current, version: 10 } });
+      }),
+    );
+    const user = userEvent.setup();
+    const { queryClient } = renderPage();
+    await loaded();
+    await user.type(screen.getByLabelText('Hotline'), '9');
+    await user.click(screen.getByRole('button', { name: 'Lưu & xuất bản' }));
+    await waitFor(() => {
+      expect(bodies).toHaveLength(1);
+    });
+    // Another admin saved settings; a refetch brings v9 while our PATCH is in flight.
+    current = {
+      ...cleanSite,
+      version: 9,
+      draft: {
+        ...cleanSite.draft,
+        settings: { ...cleanSite.draft.settings, email: 'new@lapbee.test' },
+      },
+    };
+    await act(() => queryClient.invalidateQueries({ queryKey: siteKeys.detail }));
+    release();
+    await waitFor(() => {
+      expect(screen.getByLabelText('Email')).toHaveValue('new@lapbee.test');
+    });
+    expect(publishes).toBe(0);
+    expect(screen.getByLabelText('Hotline')).toHaveValue('1900 12349');
+    expect(screen.getByText('Chưa lưu')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Lưu nháp' }));
+    await waitFor(() => {
+      expect(bodies).toHaveLength(2);
+    });
+    expect(bodies[1]).toEqual({ version: 9, phone: '1900 12349' });
+  });
+
+  it('a publish-stage VERSION_CONFLICT does not rebase later edits onto a newer version', async () => {
+    let current: Site = siteFixture;
+    server.use(mock.get(`${BASE}/site`, () => HttpResponse.json(current)));
+    const bodies: unknown[] = [];
+    server.use(
+      mock.patch(`${BASE}/site/settings`, async ({ request }) => {
+        bodies.push(await request.json());
+        return HttpResponse.json({ ...current, version: 10 });
+      }),
+      // An item changed elsewhere: the draftHash is stale.
+      mock.post(`${BASE}/site/publish`, () => problem(409, 'VERSION_CONFLICT')),
+    );
+    const user = userEvent.setup();
+    const { queryClient } = renderPage();
+    await loaded();
+    const publish = screen.getByRole('button', { name: 'Lưu & xuất bản' });
+    await user.click(publish);
+    await waitFor(() => {
+      expect(publish).toBeEnabled();
+    });
+    // The conflict reload brings the same settings version.
+    await act(() => queryClient.invalidateQueries({ queryKey: siteKeys.detail }));
+
+    await user.type(screen.getByLabelText('Giờ làm việc'), ' T7');
+    // Another admin then saves settings; the refetch must not move the dirty form's baseline.
+    current = {
+      ...siteFixture,
+      version: 9,
+      draft: {
+        ...siteFixture.draft,
+        settings: { ...siteFixture.draft.settings, email: 'new@lapbee.test' },
+      },
+    };
+    await act(() => queryClient.invalidateQueries({ queryKey: siteKeys.detail }));
+    expect(screen.getByLabelText('Email')).toHaveValue('hello@lapbee.test');
+
+    await user.click(screen.getByRole('button', { name: 'Lưu nháp' }));
+    await waitFor(() => {
+      expect(bodies).toHaveLength(1);
+    });
+    expect(bodies[0]).toEqual({ version: 7, hours: '08:00 - 20:00 T7' });
+  });
+
   it('does not ask before leaving once the edits are saved', async () => {
     mockSite(cleanSite);
     server.use(

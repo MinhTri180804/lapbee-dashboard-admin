@@ -191,12 +191,18 @@ function SiteEditor({ site }: { site: SiteView }) {
   const [publishErrors, setPublishErrors] = useState<FieldError[] | null>(null);
   const onPublish = () => {
     const patch = isDirty ? currentPatch() : null;
-    // Compared with the cache after a failure to tell whether the PATCH went through.
-    const cachedVersion = qc.getQueryData<SiteDto>(siteKeys.detail)?.version;
     const sent = structuredClone(form.getValues());
+    /** The PATCH response; still null after a failure means the PATCH (if any) failed. */
+    let patched: SiteDto | null = null;
     form.clearErrors();
     publish.mutate(
-      { settingsPatch: patch, draftHash: site.draftHash },
+      {
+        settingsPatch: patch,
+        draftHash: site.draftHash,
+        onPatched: (dto) => {
+          patched = dto;
+        },
+      },
       {
         onSuccess: ({ site: dto }) => {
           rebaseFromDto(dto, sent);
@@ -207,14 +213,18 @@ function SiteEditor({ site }: { site: SiteView }) {
           });
         },
         onError: (error) => {
-          // The PATCH may have succeeded before publish failed: the edits are saved now.
-          const cached = qc.getQueryData<SiteDto>(siteKeys.detail);
-          if (patch && cached && cached.version !== cachedVersion) rebaseFromDto(cached, sent);
+          if (patch && !patched) {
+            handleWriteError(error);
+            return;
+          }
+          // The publish step failed: the edits sent are saved, and a conflict here is about the
+          // draftHash (an item changed), not the settings version, so no rebase is armed.
+          if (patched) rebaseFromDto(patched, sent);
           if (isProblem(error, 'NOTHING_TO_PUBLISH')) {
             toast.show({ kind: 'info', title: 'Không có thay đổi để xuất bản' });
           } else if (isProblem(error, 'SITE_INVALID')) {
             setPublishErrors(error.fieldErrors);
-          } else {
+          } else if (!isProblem(error, 'VERSION_CONFLICT')) {
             handleWriteError(error);
           }
         },
