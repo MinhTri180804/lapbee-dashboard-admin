@@ -1,0 +1,66 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html {
+  -webkit-text-size-adjust: 100%;
+}
+body {
+  margin: 0;
+  background: var(--surface-page);
+  color: var(--fg-1);
+  font-family: var(--font-body);
+  font-size: var(--type-body);
+  line-height: var(--lh-normal);
+  -webkit-font-smoothing: antialiased;
+}
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+  font-stretch: var(--wdth-display);
+  font-variation-settings: 'wdth' var(--wdth-display);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-display);
+  line-height: var(--lh-snug);
+  margin: 0;
+  text-wrap: balance;
+}
+p {
+  margin: 0;
+  text-wrap: pretty;
+}
+a {
+  color: var(--text-link);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--ink-300);
+  transition: text-decoration-color var(--dur-fast);
+}
+a:hover {
+  text-decoration-color: var(--bee-500);
+  text-decoration-thickness: 2px;
+}
+::selection {
+  background: var(--bee-300);
+  color: var(--ink-950);
+}
+:focus-visible {
+  outline: 2px solid var(--ink-950);
+  outline-offset: 2px;
+}
+.lb-label {
+  font-family: var(--font-mono);
+  font-size: var(--type-label);
+  letter-spacing: var(--ls-mono);
+  text-transform: uppercase;
+  color: var(--fg-2);
+}
+.lb-container {
+  max-width: var(--container);
+  margin: 0 auto;
+  padding: 0 var(--gutter);
+}

@@ -1,0 +1,22 @@
+.wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  color: var(--fg-1);
+  line-height: 1;
+}
+.inverse {
+  color: var(--band-fg);
+}
+.mark {
+  display: block;
+  width: auto;
+}
+.text {
+  font-family: var(--font-display);
+  font-weight: var(--fw-medium);
+  letter-spacing: var(--ls-display);
+}
+.bold {
+  font-weight: var(--fw-bold);
+}

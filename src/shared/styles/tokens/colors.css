@@ -1,0 +1,133 @@
+:root {
+  /* Bee — primary brand yellow (#F5D857). Use as FILL with ink text, never as text on paper. */
+  --bee-50: #fdf9e6;
+  --bee-100: #fbf1c4;
+  --bee-200: #f9e79a;
+  --bee-300: #f7df77;
+  --bee-400: #f5d857;
+  --bee-500: #f5d857;
+  --bee-600: #ddbd2b;
+  --bee-700: #a88b12;
+  --bee-800: #6e5b0c;
+  --bee-900: #3a3007;
+  /* Ink — warm graphite neutrals */
+  --ink-950: #121210;
+  --ink-900: #1b1a17;
+  --ink-800: #272622;
+  --ink-700: #3d3b35;
+  --ink-600: #5a5750;
+  --ink-500: #7e7b72;
+  --ink-400: #a6a39a;
+  --ink-300: #cbc8be;
+  --ink-200: #e3e0d7;
+  --ink-100: #efede6;
+  --ink-50: #f6f5f0;
+  --paper: #faf9f5;
+  --white: #ffffff;
+  /* Semantic */
+  --green-600: #2e7a4c;
+  --green-50: #e8f3ec;
+  --red-600: #b83a26;
+  --red-50: #f8e9e5;
+  --blue-600: #2c5c9e;
+  --blue-50: #e7eef7;
+  --amber-700: #a88b12;
+  --amber-50: #fdf9e6;
+
+  /* Aliases */
+  --brand: var(--bee-500);
+  --brand-hover: var(--bee-600);
+  --brand-press: var(--bee-700);
+  --brand-soft: var(--bee-100);
+  --on-brand: var(--ink-950);
+  --surface-page: var(--paper);
+  --surface-card: var(--white);
+  --surface-sunken: var(--ink-50);
+  --surface-muted: var(--ink-100);
+  --surface-inverse: var(--ink-950);
+  --surface-inverse-2: var(--ink-800);
+  --fg-1: var(--ink-950);
+  --fg-2: var(--ink-600);
+  --fg-3: var(--ink-500);
+  --fg-disabled: var(--ink-400);
+  --fg-inverse-1: var(--ink-50);
+  --fg-inverse-2: var(--ink-400);
+  --fg-accent-on-dark: var(--bee-400);
+  --text-body: var(--fg-1);
+  --text-muted: var(--fg-2);
+  --text-link: var(--ink-950);
+  --border-1: var(--ink-200);
+  --border-2: var(--ink-300);
+  --border-strong: var(--ink-950);
+  --border-inverse: var(--ink-700);
+  --focus-ring: var(--bee-500);
+  /* Emphasis accent shown on strong (ink) fills — yellow in light, deep bee in dark */
+  --accent-on-strong: var(--bee-400);
+  /* Bands: full-bleed dark sections (footer, B2B, principles). Stay dark in both themes. */
+  --band-bg: var(--ink-950);
+  --band-fg: var(--ink-50);
+  --band-fg-2: var(--ink-400);
+  --band-border: var(--ink-700);
+  --band-hover: var(--ink-800);
+  --band-accent: var(--bee-400);
+  color-scheme: light;
+  --success: var(--green-600);
+  --success-soft: var(--green-50);
+  --danger: var(--red-600);
+  --danger-soft: var(--red-50);
+  --info: var(--blue-600);
+  --info-soft: var(--blue-50);
+  --warning: var(--amber-700);
+  --warning-soft: var(--amber-50);
+}
+
+/* Dark theme — set data-theme="dark" on <html>. The ink ramp flips so "ink" keeps meaning "strongest contrast with the page". */
+[data-theme='dark'] {
+  color-scheme: dark;
+  --ink-950: #f6f5f0;
+  --ink-900: #efede6;
+  --ink-800: #e3e0d7;
+  --ink-700: #cbc8be;
+  --ink-600: #a6a39a;
+  --ink-500: #86837a;
+  --ink-400: #5e5b54;
+  --ink-300: #3d3b35;
+  --ink-200: #2c2b27;
+  --ink-100: #222120;
+  --ink-50: #1b1a18;
+  --paper: #121110;
+  --white: #1a1917;
+  --green-600: #62b585;
+  --green-50: #14251a;
+  --red-600: #e58872;
+  --red-50: #2b1814;
+  --blue-600: #86a9de;
+  --blue-50: #151e2b;
+  --amber-700: #f5d857;
+  --amber-50: #2a250f;
+  --bee-50: #2a250f;
+  --bee-100: #3a3311;
+  --on-brand: #121210;
+  --accent-on-strong: #6e5b0c;
+  --surface-page: #121110;
+  --surface-card: #1a1917;
+  --surface-sunken: #1d1c1a;
+  --surface-muted: #242320;
+  --surface-inverse: #f6f5f0;
+  --fg-inverse-1: #121210;
+  --fg-inverse-2: #5a5750;
+  --border-1: #2c2b27;
+  --border-2: #3d3b35;
+  --border-inverse: #cbc8be;
+  --band-bg: #0a0a09;
+  --band-fg: #f6f5f0;
+  --band-fg-2: #a6a39a;
+  --band-border: #2c2b27;
+  --band-hover: #1d1c1a;
+  --band-accent: #f5d857;
+  --shadow-1: 0 1px 0 rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 2px 4px rgba(0, 0, 0, 0.3), 0 10px 28px -8px rgba(0, 0, 0, 0.6);
+  --shadow-3: 0 4px 8px rgba(0, 0, 0, 0.35), 0 28px 64px -16px rgba(0, 0, 0, 0.75);
+  --shadow-focus: 0 0 0 3px rgba(245, 216, 87, 0.45);
+  --scrim: rgba(0, 0, 0, 0.62);
+}

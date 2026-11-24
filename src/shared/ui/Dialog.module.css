@@ -1,0 +1,38 @@
+.dialog {
+  width: min(480px, calc(100vw - 2 * var(--space-4)));
+  padding: 0;
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-lg);
+  background: var(--surface-card);
+  color: var(--fg-1);
+  box-shadow: var(--shadow-3);
+}
+.dialog::backdrop {
+  background: var(--scrim);
+}
+.panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-6);
+}
+.title {
+  font-size: var(--fs-20);
+  /* Room for the close button in the corner. */
+  padding-right: var(--space-8);
+}
+.close {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
+}
+.body {
+  font-size: var(--fs-14);
+  color: var(--fg-2);
+}
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}

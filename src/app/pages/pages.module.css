@@ -1,0 +1,16 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.standalone {
+  min-height: 100vh;
+  background: var(--surface-page);
+}
+
+.link {
+  align-self: flex-start;
+  font-size: var(--fs-14);
+  color: var(--text-link);
+}

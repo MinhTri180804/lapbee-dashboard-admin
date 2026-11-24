@@ -1,0 +1,42 @@
+:root {
+  --font-display: 'Archivo Variable', 'Archivo', 'Be Vietnam Pro', system-ui, sans-serif;
+  --font-body: 'Be Vietnam Pro', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, monospace;
+  --wdth-display: 112; /* @kind font */
+  /* Size scale (px) */
+  --fs-12: 12px;
+  --fs-13: 13px;
+  --fs-14: 14px;
+  --fs-16: 16px;
+  --fs-18: 18px;
+  --fs-20: 20px;
+  --fs-24: 24px;
+  --fs-32: 32px;
+  --fs-40: 40px;
+  --fs-56: 56px;
+  --fs-72: 72px;
+  --fs-96: 96px;
+  --fw-light: 300; /* @kind font */
+  --fw-regular: 400; /* @kind font */
+  --fw-medium: 500; /* @kind font */
+  --fw-semibold: 600; /* @kind font */
+  --fw-bold: 700; /* @kind font */
+  --lh-tight: 1.02; /* @kind font */
+  --lh-snug: 1.18; /* @kind font */
+  --lh-normal: 1.5; /* @kind font */
+  --lh-relaxed: 1.65; /* @kind font */
+  --ls-display: -0.025em; /* @kind font */
+  --ls-tight: -0.01em; /* @kind font */
+  --ls-mono: 0.04em; /* @kind font */
+  --ls-caps: 0.12em; /* @kind font */
+  /* Semantic roles (fluid) */
+  --type-display: clamp(44px, 7.2vw, 96px);
+  --type-h1: clamp(36px, 5vw, 64px);
+  --type-h2: clamp(28px, 3.4vw, 40px);
+  --type-h3: clamp(20px, 2vw, 24px);
+  --type-lead: clamp(17px, 1.5vw, 20px);
+  --type-body: 16px;
+  --type-small: 14px;
+  --type-caption: 13px;
+  --type-label: 12px;
+}
