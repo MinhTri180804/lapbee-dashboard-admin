@@ -1,5 +1,5 @@
 import { ArrowLeft } from 'lucide-react';
-import { useEffect, useRef, useState, type ReactElement, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactElement, type ReactNode } from 'react';
 import { useForm, useWatch, type FieldValues, type UseFormReturn } from 'react-hook-form';
 import { useNavigate } from 'react-router';
 import type { MediaThumb } from '@/features/media';
@@ -141,6 +141,8 @@ type Baseline<T> = { initial: T; version: number };
 
 type ItemActions = {
   guard: ReactElement;
+  /** The item was deleted elsewhere: show the not-found state. */
+  gone: boolean;
   readOnly: boolean;
   saving: boolean;
   goBack: () => void;
@@ -178,24 +180,61 @@ function useItemActions<K extends ItemKind>(
   const [leaving, setLeaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  /** The item is gone from the draft (deleted elsewhere). */
+  const [gone, setGone] = useState(false);
+
   // Declared before the navigation effect so the blocker sees `leaving` first.
-  const guard = useUnsavedGuard(form.formState.isDirty && !leaving);
+  const guard = useUnsavedGuard(form.formState.isDirty && !leaving && !gone);
   useEffect(() => {
     if (leaving) void navigate(back);
   }, [leaving, navigate, back]);
 
-  const currentVersion = current?.version;
+  /** The item now in the cache, read by error handlers that run after later renders. */
+  const latest = useRef(current);
+  // Declared before the conflict effect below, so that effect reads this render's item.
+  useEffect(() => {
+    latest.current = current;
+  });
+  /** Moves the baseline to the cached item, keeping every field the user changed. */
+  const rebase = useCallback(
+    (next: { version: number; form: ItemFormMap[K] }) => {
+      const b = baseline.current;
+      if (!b) return;
+      const merged = keepEdits(next.form, b.initial, form.getValues());
+      baseline.current = { initial: next.form, version: next.version };
+      form.reset(next.form);
+      form.reset(merged, { keepDefaultValues: true });
+    },
+    [form],
+  );
+
+  // After a conflict, the reload ("Tải lại") becomes the new baseline, or the not-found state
+  // when the item is no longer in the draft.
+  const currentVersion = current?.version ?? null;
   useEffect(() => {
     const b = baseline.current;
-    if (!b || !current || current.version === b.version || !conflicted.current) return;
-    conflicted.current = false;
-    const merged = keepEdits(current.form, b.initial, form.getValues());
-    baseline.current = { initial: current.form, version: current.version };
-    form.reset(current.form);
-    form.reset(merged, { keepDefaultValues: true });
-    // `current.form` is rebuilt every render; its version is what matters.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentVersion, form]);
+    const now = latest.current;
+    if (!b || !conflicted.current) return;
+    if (!now) {
+      conflicted.current = false;
+      setGone(true);
+    } else if (now.version !== b.version) {
+      conflicted.current = false;
+      rebase(now);
+    }
+  }, [currentVersion, rebase]);
+
+  /** On a 409: rebase now when the cache is already ahead, else wait for the reload. */
+  const onConflict = () => {
+    const b = baseline.current;
+    const now = latest.current;
+    if (b && now && now.version !== b.version) {
+      conflicted.current = false;
+      rebase(now);
+    } else {
+      conflicted.current = true;
+    }
+  };
 
   const leave = (title: string, body: string) => {
     toast.show({ kind: 'success', title, body });
@@ -204,7 +243,9 @@ function useItemActions<K extends ItemKind>(
 
   const onError = (error: Error) => {
     if (isProblem(error, 'VERSION_CONFLICT')) {
-      conflicted.current = true;
+      onConflict();
+    } else if (item && isProblem(error, 'NOT_FOUND')) {
+      setGone(true);
     } else if (isProblem(error, 'VALIDATION_FAILED')) {
       applyProblemToForm(error, form.setError, {}, leafPaths(form.getValues()));
     } else if (isProblem(error, 'SITE_ITEM_LIMIT')) {
@@ -264,6 +305,7 @@ function useItemActions<K extends ItemKind>(
 
   return {
     guard,
+    gone,
     readOnly,
     saving: create.isPending || update.isPending,
     goBack: () => {
@@ -331,6 +373,7 @@ function ServiceEditor({ site, item }: EditorProps<ServiceDto>) {
     name: ['icon', 'title', 'desc', 'time', 'visible'],
   });
 
+  if (actions.gone) return <ItemNotFound kind="services" />;
   return (
     <ItemShell
       kind="services"
@@ -378,6 +421,7 @@ function TeamEditor({ site, item }: EditorProps<TeamDto>) {
   });
   const photo = photoMediaId ? media.get(photoMediaId) : undefined;
 
+  if (actions.gone) return <ItemNotFound kind="team" />;
   return (
     <ItemShell
       kind="team"
@@ -442,6 +486,7 @@ function TimelineEditor({ site, item }: EditorProps<TimelineDto>) {
     name: ['year', 'title', 'body', 'media', 'quote', 'photos'],
   });
 
+  if (actions.gone) return <ItemNotFound kind="timeline" />;
   return (
     <ItemShell
       kind="timeline"

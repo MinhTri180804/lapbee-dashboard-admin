@@ -167,6 +167,136 @@ describe('SiteItemPage', () => {
     expect(bodies[1]).toEqual({ version: 3, desc: 'Thay màn hình, bàn phím, pin' });
   });
 
+  it('after a conflict with the cache already ahead, rebases at once onto the cached version', async () => {
+    mockSite();
+    const bodies: unknown[] = [];
+    server.use(
+      mock.patch(`${BASE}/site/services/${SERVICE.id}`, async ({ request }) => {
+        bodies.push(await request.json());
+        return bodies.length === 1
+          ? problem(409, 'VERSION_CONFLICT')
+          : HttpResponse.json(siteFixture);
+      }),
+    );
+    const user = userEvent.setup();
+    const { router, queryClient } = renderItem('services', SERVICE.id);
+    await user.type(await screen.findByLabelText('Mô tả'), ', pin');
+    const ahead: SiteDto = {
+      ...siteFixture,
+      draft: {
+        ...siteFixture.draft,
+        services: siteFixture.draft.services.map((s) =>
+          s.id === SERVICE.id ? { ...s, time: '2 ngày', version: 9 } : s,
+        ),
+      },
+    };
+    // A background refetch put v9 in the cache before the save.
+    act(() => {
+      queryClient.setQueryData<SiteDto>(siteKeys.detail, ahead);
+    });
+    await user.click(screen.getByRole('button', { name: 'Lưu thay đổi' }));
+    await waitFor(() => {
+      expect(bodies).toHaveLength(1);
+    });
+    expect(bodies[0]).toEqual({ version: 2, desc: 'Thay màn hình, bàn phím, pin' });
+    // "Tải lại" refetches the same v9: the version in the cache does not change.
+    act(() => {
+      queryClient.setQueryData<SiteDto>(siteKeys.detail, structuredClone(ahead));
+    });
+    expect(await screen.findByDisplayValue('2 ngày')).toBeInTheDocument();
+    expect(screen.getByLabelText('Mô tả')).toHaveValue('Thay màn hình, bàn phím, pin');
+    await user.click(screen.getByRole('button', { name: 'Lưu thay đổi' }));
+    await waitFor(() => {
+      expect(router.state.location.search).toBe('?tab=services');
+    });
+    expect(bodies[1]).toEqual({ version: 9, desc: 'Thay màn hình, bàn phím, pin' });
+  });
+
+  it('deletes with the cached version after a delete conflict', async () => {
+    mockSite();
+    const versions: (string | null)[] = [];
+    server.use(
+      mock.delete(`${BASE}/site/services/${SERVICE.id}`, ({ request }) => {
+        versions.push(new URL(request.url).searchParams.get('version'));
+        return versions.length === 1
+          ? problem(409, 'VERSION_CONFLICT')
+          : HttpResponse.json(siteFixture);
+      }),
+    );
+    const user = userEvent.setup();
+    const { router, queryClient } = renderItem('services', SERVICE.id);
+    await screen.findByLabelText('Tên dịch vụ');
+    act(() => {
+      queryClient.setQueryData<SiteDto>(siteKeys.detail, {
+        ...siteFixture,
+        draft: {
+          ...siteFixture.draft,
+          services: siteFixture.draft.services.map((s) =>
+            s.id === SERVICE.id ? { ...s, version: 9 } : s,
+          ),
+        },
+      });
+    });
+    await user.click(screen.getByRole('button', { name: 'Xoá' }));
+    await user.click(
+      within(screen.getByRole('dialog', { name: 'Xoá Sửa laptop?' })).getByRole('button', {
+        name: 'Xoá',
+      }),
+    );
+    await waitFor(() => {
+      expect(versions).toHaveLength(1);
+    });
+    await user.click(screen.getByRole('button', { name: 'Xoá' }));
+    await user.click(
+      within(screen.getByRole('dialog', { name: 'Xoá Sửa laptop?' })).getByRole('button', {
+        name: 'Xoá',
+      }),
+    );
+    await waitFor(() => {
+      expect(router.state.location.search).toBe('?tab=services');
+    });
+    expect(versions).toEqual(['2', '9']);
+  });
+
+  it('shows the not-found state when the item was deleted elsewhere', async () => {
+    mockSite();
+    server.use(
+      mock.patch(`${BASE}/site/services/${SERVICE.id}`, () => problem(409, 'VERSION_CONFLICT')),
+    );
+    const user = userEvent.setup();
+    const { queryClient } = renderItem('services', SERVICE.id);
+    await user.type(await screen.findByLabelText('Mô tả'), ', pin');
+    await user.click(screen.getByRole('button', { name: 'Lưu thay đổi' }));
+    // "Tải lại": the reloaded draft no longer has the service.
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Lưu thay đổi' })).toBeEnabled();
+    });
+    act(() => {
+      queryClient.setQueryData<SiteDto>(siteKeys.detail, {
+        ...siteFixture,
+        draft: {
+          ...siteFixture.draft,
+          services: siteFixture.draft.services.filter((s) => s.id !== SERVICE.id),
+        },
+      });
+    });
+    expect(
+      await screen.findByRole('heading', { name: 'Không tìm thấy mục này' }),
+    ).toBeInTheDocument();
+  });
+
+  it('shows the not-found state on NOT_FOUND from a save', async () => {
+    mockSite();
+    server.use(mock.patch(`${BASE}/site/services/${SERVICE.id}`, () => problem(404, 'NOT_FOUND')));
+    const user = userEvent.setup();
+    renderItem('services', SERVICE.id);
+    await user.type(await screen.findByLabelText('Mô tả'), ', pin');
+    await user.click(screen.getByRole('button', { name: 'Lưu thay đổi' }));
+    expect(
+      await screen.findByRole('heading', { name: 'Không tìm thấy mục này' }),
+    ).toBeInTheDocument();
+  });
+
   it('asks before deleting and sends ?version=', async () => {
     mockSite();
     const urls: URL[] = [];
