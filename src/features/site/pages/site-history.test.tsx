@@ -123,12 +123,17 @@ describe('SiteHistoryPage', () => {
     expect(calls.n).toBe(0);
   });
 
-  it('hides restore buttons without site.update', async () => {
+  it('disables restore buttons with a tooltip without site.update', async () => {
     mockList();
     mockUsers();
     renderPage(['site.read']);
     await screen.findByText('#3');
-    expect(screen.queryByRole('button', { name: 'Khôi phục về nháp' })).not.toBeInTheDocument();
+    const buttons = screen.getAllByRole('button', { name: 'Khôi phục về nháp' });
+    expect(buttons.length).toBeGreaterThan(0);
+    for (const button of buttons) {
+      expect(button).toBeDisabled();
+      expect(button).toHaveAttribute('title', 'Bạn không có quyền khôi phục bản nháp');
+    }
   });
 
   it('requests page 2 from the URL and paginates', async () => {

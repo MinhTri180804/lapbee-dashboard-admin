@@ -18,6 +18,8 @@ import { useSite } from '../hooks/use-site';
 import { useUserNames } from '../hooks/use-user-names';
 import styles from './SiteHistoryPage.module.css';
 
+const NO_RESTORE_TITLE = 'Bạn không có quyền khôi phục bản nháp';
+
 type PublicationDto = NonNullable<ReturnType<typeof usePublications>['data']>['items'][number];
 
 export function SiteHistoryPage() {
@@ -56,23 +58,23 @@ export function SiteHistoryPage() {
       render: (p) => (p.publishedBy ? (names.get(p.publishedBy) ?? '—') : '—'),
     },
   ];
-  if (canUpdate) {
-    columns.push({
-      key: 'actions',
-      header: '',
-      render: (p) =>
-        p.number === currentNumber ? null : (
-          <Button
-            variant="secondary"
-            onClick={() => {
-              setTarget(p);
-            }}
-          >
-            Khôi phục về nháp
-          </Button>
-        ),
-    });
-  }
+  columns.push({
+    key: 'actions',
+    header: '',
+    render: (p) =>
+      p.number === currentNumber ? null : (
+        <Button
+          variant="secondary"
+          disabled={!canUpdate}
+          title={canUpdate ? undefined : NO_RESTORE_TITLE}
+          onClick={() => {
+            setTarget(p);
+          }}
+        >
+          Khôi phục về nháp
+        </Button>
+      ),
+  });
 
   function goTo(next: number) {
     setParams(next <= 1 ? {} : { page: String(next) });
