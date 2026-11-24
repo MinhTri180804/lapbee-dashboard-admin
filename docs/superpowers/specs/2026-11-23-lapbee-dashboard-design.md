@@ -177,6 +177,19 @@ ESLint cấm `dangerouslySetInnerHTML` (`react/no-danger`). Phần preview bài 
   - `SITE_ITEM_LIMIT`: toast.
 - `warnings` hiện dưới field tương ứng ở dạng cảnh báo mềm, không chặn.
 - Lịch sử: `GET /site/publications` có phân trang. "Khôi phục về nháp" cần xác nhận, chạy xong thì chuyển về tab Thông tin chung và hiện toast.
+- Quyết định giai đoạn 2:
+  - P2-1: tab nằm trong URL `/site?tab=general|home|services|team|journey`, tải lại hoặc quay lại từ trang mục vẫn đúng tab.
+  - P2-2: trang mục `/site/services/new`, `/site/services/:id`, tương tự `team`, `timeline`; lịch sử ở `/site/history`. Mỗi màn có URL riêng.
+  - P2-3: form settings (tab Thông tin chung và Trang chủ) là một form chung; đổi tab không mất dữ liệu đang gõ.
+  - P2-4: rời trang khi form settings hoặc form mục có thay đổi chưa gửi thì hỏi "Bỏ thay đổi chưa lưu?" (`useBlocker`).
+  - P2-5: "Hoàn tác" hỏi xác nhận trước: "Đưa bản nháp về bản đã xuất bản gần nhất? Mọi thay đổi chưa xuất bản sẽ mất." (backend xoá toàn bộ nháp).
+  - P2-6: "Xoá" mục hỏi xác nhận; công tắc ẩn/hiện ở danh sách dịch vụ ghi nháp ngay.
+  - P2-7: lỗi `SITE_INVALID` khi xuất bản hiện hộp thoại liệt kê lỗi, mỗi lỗi có link tới tab hoặc mục tương ứng.
+- Quy tắc chốt khi triển khai:
+  - `VERSION_CONFLICT` luôn mở hộp thoại xung đột chung, kể cả với mutation có `handlesErrors`; `handlesErrors` chỉ tắt toast.
+  - Sau 409 hoặc sau một lần lưu đang chạy, form settings và form mục rebase phần người dùng chưa lưu lên version mới của server (giữ thay đổi của họ, chuyển version nền). Nếu cache đã mới hơn lúc xảy ra xung đột thì rebase ngay. Không bao giờ tự gửi lại.
+  - Thiếu quyền `site.update`: nút vẫn hiện nhưng vô hiệu, có tooltip `title` "Bạn không có quyền …", không ẩn (thay cho "ẩn nút" ở Task 7).
+  - Kéo thả sắp xếp: mỗi lần một thao tác (tay nắm `aria-disabled` khi đang gửi), thứ tự lạc quan được hoàn lại khi lỗi.
 
 ### 5.2 Media
 

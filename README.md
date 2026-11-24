@@ -1,6 +1,6 @@
 # LAPBEE Dashboard
 
-Dashboard quản trị cho website LAPBEE: đăng nhập, quản lý phiên, và (ở các giai đoạn sau) quản lý nội dung site, thư viện ảnh, bài viết, người dùng và vai trò. Đây là SPA React gọi API `/admin/v1` của backend NestJS. Giai đoạn 1 gồm nền tảng, đăng nhập, thiết lập mật khẩu, khung giao diện và trang tài khoản.
+Dashboard quản trị cho website LAPBEE: đăng nhập, quản lý phiên, và (ở các giai đoạn sau) quản lý nội dung site, thư viện ảnh, bài viết, người dùng và vai trò. Đây là SPA React gọi API `/admin/v1` của backend NestJS. Giai đoạn 1 gồm nền tảng, đăng nhập, thiết lập mật khẩu, khung giao diện và trang tài khoản. Giai đoạn 2 thêm quản lý nội dung site (`/site`) và thư viện ảnh.
 
 ## Yêu cầu
 
@@ -49,7 +49,7 @@ Xem `docs/adr/0004-generated-dto-types.md`.
 ## Cấu trúc
 
 - `src/app/`: router, providers, query client, khung giao diện (layout), các trang cấp app, hộp thoại đăng nhập lại và xung đột.
-- `src/features/`: mỗi tính năng một thư mục (hiện có `auth`).
+- `src/features/`: mỗi tính năng một thư mục (hiện có `auth`, `site` gồm thông tin chung, trang chủ, dịch vụ, đội ngũ, hành trình, lịch sử xuất bản, và `media` gồm thư viện ảnh và hộp chọn ảnh).
 - `src/shared/`: code dùng chung: `api` (axios, lỗi, CSRF), `auth`, `form`, `lib`, `styles`, `theme`, `ui`.
 - `src/test/`: tiện ích test, MSW handlers, fixtures.
 - `scripts/`: `gen-api.mjs`, `check-api.mjs`.
