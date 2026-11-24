@@ -166,36 +166,57 @@ describe('ServicesList', () => {
     });
   });
 
-  it('still rolls back a failed reorder when a switch is toggled meanwhile', async () => {
+  it('disables the switches while a reorder is in flight', async () => {
     mockSite();
     const reorder = gate();
-    const bodies: unknown[] = [];
     server.use(
-      mock.patch(`${BASE}/site/services/:id`, async ({ request }) => {
-        const body = (await request.json()) as Record<string, unknown>;
-        bodies.push(body);
-        if ('position' in body) {
-          await reorder.wait;
-          return problem(500, 'INTERNAL');
-        }
-        return HttpResponse.json(siteFixture);
+      mock.patch(`${BASE}/site/services/:id`, async () => {
+        await reorder.wait;
+        return problem(500, 'INTERNAL');
       }),
     );
-    const user = userEvent.setup();
     renderList(<ServicesList />);
     await screen.findByText('Sửa laptop');
     await dragDownOnce('Đổi thứ tự Sửa laptop');
     expect(rowTitles()).toEqual(['Vệ sinh máy', 'Sửa laptop']);
-    await user.click(screen.getByRole('switch', { name: 'Hiện Vệ sinh máy' }));
-    await waitFor(() => {
-      expect(bodies).toHaveLength(2);
-    });
+    expect(screen.getByRole('switch', { name: 'Hiện Vệ sinh máy' })).toBeDisabled();
+    expect(screen.getByRole('switch', { name: 'Hiện Sửa laptop' })).toBeDisabled();
     act(() => {
       reorder.open();
     });
     await waitFor(() => {
       expect(rowTitles()).toEqual(['Sửa laptop', 'Vệ sinh máy']);
     });
+    expect(screen.getByRole('switch', { name: 'Hiện Vệ sinh máy' })).toBeEnabled();
+  });
+
+  it('sends one toggle per row until it settles (a double click is not a conflict)', async () => {
+    mockSite();
+    const toggle = gate();
+    const bodies: unknown[] = [];
+    server.use(
+      mock.patch(`${BASE}/site/services/:id`, async ({ request }) => {
+        bodies.push(await request.json());
+        await toggle.wait;
+        return HttpResponse.json(siteFixture);
+      }),
+    );
+    const user = userEvent.setup();
+    renderList(<ServicesList />);
+    const sw = await screen.findByRole('switch', { name: 'Hiện Vệ sinh máy' });
+    await user.dblClick(sw);
+    await waitFor(() => {
+      expect(bodies).toHaveLength(1);
+    });
+    expect(sw).toBeDisabled();
+    expect(screen.getByRole('switch', { name: 'Hiện Sửa laptop' })).toBeEnabled();
+    act(() => {
+      toggle.open();
+    });
+    await waitFor(() => {
+      expect(sw).toBeEnabled();
+    });
+    expect(bodies).toHaveLength(1);
   });
 
   it('ignores a second drag while a reorder is in flight', async () => {
@@ -239,11 +260,13 @@ describe('ServicesList', () => {
     expect(rowTitles()).toEqual(['Vệ sinh máy', 'Sửa laptop']);
   });
 
-  it('without site.update hides add and disables handles and switches', async () => {
+  it('without site.update disables add, handles and switches', async () => {
     mockSite();
     renderList(<ServicesList />, ['site.read']);
     await screen.findByText('Sửa laptop');
-    expect(screen.queryByRole('button', { name: 'Thêm dịch vụ' })).not.toBeInTheDocument();
+    const add = screen.getByRole('button', { name: 'Thêm dịch vụ' });
+    expect(add).toBeDisabled();
+    expect(add).toHaveAttribute('title', 'Bạn không có quyền sửa website');
     expect(screen.getByRole('switch', { name: 'Hiện Sửa laptop' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Đổi thứ tự Sửa laptop' })).toBeDisabled();
   });
@@ -280,6 +303,14 @@ describe('TeamGrid', () => {
     renderList(<TeamGrid />);
     const lan = await screen.findByRole('button', { name: /^Lan/ });
     expect(within(lan).getByText('Đang ẩn')).toBeInTheDocument();
+  });
+
+  it('without site.update disables add with a tooltip', async () => {
+    mockSite();
+    renderList(<TeamGrid />, ['site.read']);
+    const add = await screen.findByRole('button', { name: 'Thêm thành viên' });
+    expect(add).toBeDisabled();
+    expect(add).toHaveAttribute('title', 'Bạn không có quyền sửa website');
   });
 
   it('clicking a card opens the member', async () => {
@@ -319,6 +350,14 @@ describe('TimelineList', () => {
     expect(screen.getByText('Trích dẫn')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Thêm mốc' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Đổi thứ tự/ })).not.toBeInTheDocument();
+  });
+
+  it('without site.update disables add with a tooltip', async () => {
+    mockSite();
+    renderList(<TimelineList />, ['site.read']);
+    const add = await screen.findByRole('button', { name: 'Thêm mốc' });
+    expect(add).toBeDisabled();
+    expect(add).toHaveAttribute('title', 'Bạn không có quyền sửa website');
   });
 
   it('labels text-only milestones "Chỉ chữ" and edit navigates', async () => {

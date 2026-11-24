@@ -125,8 +125,11 @@ export type SortableItemProps = {
   /** No permission to reorder: the handle is disabled with a tooltip. */
   disabled: boolean;
   className?: string | undefined;
-  /** Renders the item; `handle` is the drag handle button to place inside. */
-  children: (handle: ReactNode, dragging: boolean) => ReactNode;
+  /**
+   * Renders the item; `handle` is the drag handle button to place inside. `busy` is true while
+   * a reorder is in flight: other writes to the items would send a stale version.
+   */
+  children: (handle: ReactNode, dragging: boolean, busy: boolean) => ReactNode;
 };
 
 /** One sortable item; only the handle starts a drag, so the rest of the item stays clickable. */
@@ -167,7 +170,7 @@ export function SortableItem({ id, title, disabled, className, children }: Sorta
       style={style}
       className={[className, isDragging ? styles.dragging : null].filter(Boolean).join(' ')}
     >
-      {children(handle, isDragging)}
+      {children(handle, isDragging, busy)}
     </li>
   );
 }

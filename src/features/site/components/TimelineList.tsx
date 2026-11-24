@@ -4,6 +4,7 @@ import { useCan } from '@/shared/auth/permissions';
 import { Badge, Button, IconButton } from '@/shared/ui';
 import { useSite } from '../hooks/use-site';
 import type { TimelineDto } from '../model/types';
+import { NO_UPDATE_TITLE } from './labels';
 import { Section } from './Section';
 import styles from './TimelineList.module.css';
 
@@ -32,18 +33,18 @@ export function TimelineList() {
       title="Hành trình"
       meta={meta}
       actions={
-        canUpdate ? (
-          <Button
-            variant="secondary"
-            size="sm"
-            icon={Plus}
-            onClick={() => {
-              void navigate('/site/timeline/new');
-            }}
-          >
-            Thêm mốc
-          </Button>
-        ) : null
+        <Button
+          variant="secondary"
+          size="sm"
+          icon={Plus}
+          disabled={!canUpdate}
+          title={canUpdate ? undefined : NO_UPDATE_TITLE}
+          onClick={() => {
+            void navigate('/site/timeline/new');
+          }}
+        >
+          Thêm mốc
+        </Button>
       }
     >
       {timeline.length > 0 ? (

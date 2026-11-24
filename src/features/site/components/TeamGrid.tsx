@@ -5,6 +5,7 @@ import { useCan } from '@/shared/auth/permissions';
 import { Badge, Button, Card } from '@/shared/ui';
 import { useUpdateItem } from '../hooks/use-item-mutations';
 import { useSite } from '../hooks/use-site';
+import { NO_UPDATE_TITLE } from './labels';
 import { Section } from './Section';
 import { SortableItem, SortableItems } from './SortableItems';
 import styles from './TeamGrid.module.css';
@@ -22,18 +23,18 @@ export function TeamGrid() {
       title="Đội ngũ"
       meta={`${String(team.length)} thành viên`}
       actions={
-        canUpdate ? (
-          <Button
-            variant="secondary"
-            size="sm"
-            icon={UserPlus}
-            onClick={() => {
-              void navigate('/site/team/new');
-            }}
-          >
-            Thêm thành viên
-          </Button>
-        ) : null
+        <Button
+          variant="secondary"
+          size="sm"
+          icon={UserPlus}
+          disabled={!canUpdate}
+          title={canUpdate ? undefined : NO_UPDATE_TITLE}
+          onClick={() => {
+            void navigate('/site/team/new');
+          }}
+        >
+          Thêm thành viên
+        </Button>
       }
     >
       {team.length > 0 ? (

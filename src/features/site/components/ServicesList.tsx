@@ -1,5 +1,6 @@
 import { verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Pencil, Plus } from 'lucide-react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useCan } from '@/shared/auth/permissions';
 import { Button, IconButton, Switch } from '@/shared/ui';
@@ -19,12 +20,26 @@ export function ServicesList() {
   const update = useUpdateItem('services', { handlesErrors: false });
   /** Own instance, so a switch toggle cannot drop the reorder's settle. */
   const reorder = useUpdateItem('services', { handlesErrors: false });
+  /** Rows with a toggle in flight: a second toggle would send the same, now stale, version. */
+  const [toggling, setToggling] = useState<ReadonlySet<string>>(() => new Set());
   if (!site) return null;
   const services = site.draft.services;
   const shown = services.filter((s) => s.visible).length;
 
   const toggle = (s: ServiceDto, visible: boolean) => {
-    update.mutate({ id: s.id, body: { version: s.version, visible } });
+    if (toggling.has(s.id)) return;
+    setToggling((prev) => new Set(prev).add(s.id));
+    // `mutateAsync`: per-call `mutate` callbacks are dropped when another row toggles first.
+    update
+      .mutateAsync({ id: s.id, body: { version: s.version, visible } })
+      .catch(() => undefined) // The global toast reports the failure.
+      .finally(() => {
+        setToggling((prev) => {
+          const next = new Set(prev);
+          next.delete(s.id);
+          return next;
+        });
+      });
   };
 
   return (
@@ -32,18 +47,18 @@ export function ServicesList() {
       title="Dịch vụ"
       meta={`${String(services.length)} dịch vụ · ${String(shown)} đang hiển thị`}
       actions={
-        canUpdate ? (
-          <Button
-            variant="secondary"
-            size="sm"
-            icon={Plus}
-            onClick={() => {
-              void navigate('/site/services/new');
-            }}
-          >
-            Thêm dịch vụ
-          </Button>
-        ) : null
+        <Button
+          variant="secondary"
+          size="sm"
+          icon={Plus}
+          disabled={!canUpdate}
+          title={canUpdate ? undefined : NO_UPDATE_TITLE}
+          onClick={() => {
+            void navigate('/site/services/new');
+          }}
+        >
+          Thêm dịch vụ
+        </Button>
       }
     >
       {services.length > 0 ? (
@@ -67,7 +82,7 @@ export function ServicesList() {
                     disabled={!canUpdate}
                     className={styles.row}
                   >
-                    {(handle) => (
+                    {(handle, _dragging, busy) => (
                       <>
                         {handle}
                         <span
@@ -92,7 +107,7 @@ export function ServicesList() {
                             }}
                             label={`Hiện ${s.title}`}
                             hideLabel
-                            disabled={!canUpdate}
+                            disabled={!canUpdate || busy || toggling.has(s.id)}
                           />
                         </span>
                         <IconButton
