@@ -1,4 +1,4 @@
-import type { Settings, SiteTab } from '../model/types';
+import type { ItemKind, Settings, SiteTab } from '../model/types';
 
 export const SITE_TABS: { value: SiteTab; label: string }[] = [
   { value: 'general', label: 'Thông tin chung' },
@@ -37,3 +37,46 @@ export const SETTINGS_LABEL: Record<keyof Settings, string> = {
 
 export const NO_UPDATE_TITLE = 'Bạn không có quyền sửa website';
 export const NO_PUBLISH_TITLE = 'Bạn không có quyền xuất bản website';
+
+export type ItemMeta = {
+  /** Site tab label, e.g. the back button. */
+  section: string;
+  /** Lower-case noun: "Thêm {noun}", "Đã xoá {noun}". */
+  noun: string;
+  tab: SiteTab;
+  description: string;
+  previewLabel: string;
+};
+
+export const ITEM_META: Record<ItemKind, ItemMeta> = {
+  services: {
+    section: 'Dịch vụ',
+    noun: 'dịch vụ',
+    tab: 'services',
+    description: 'Thẻ dịch vụ hiển thị ở mục Dịch vụ trên trang chủ và trang Đặt lịch.',
+    previewLabel: 'Xem trước · mục Dịch vụ, trang chủ',
+  },
+  team: {
+    section: 'Đội ngũ',
+    noun: 'thành viên',
+    tab: 'team',
+    description: 'Hồ sơ hiển thị trên trang Đội ngũ.',
+    previewLabel: 'Xem trước · trang Đội ngũ',
+  },
+  timeline: {
+    section: 'Hành trình',
+    noun: 'mốc',
+    tab: 'journey',
+    description: 'Mốc hiển thị trên trang Hành trình, tự sắp xếp theo năm.',
+    previewLabel: 'Xem trước · trang Hành trình',
+  },
+};
+
+/** "Từ 2020 · 6 năm tại LAPBEE", or "thành viên mới" in the join year. */
+export function sinceHint(since: number, currentYear: number): string {
+  if (!Number.isFinite(since)) return '';
+  const years = currentYear - since;
+  return years > 0
+    ? `Từ ${String(since)} · ${String(years)} năm tại LAPBEE`
+    : `Từ ${String(since)} · thành viên mới`;
+}

@@ -195,7 +195,7 @@ const ITEM_TAB: Record<ItemKind, SiteTab> = {
   timeline: 'journey',
 };
 
-function isItemKind(s: string): s is ItemKind {
+export function isItemKind(s: string): s is ItemKind {
   return s === 'services' || s === 'team' || s === 'timeline';
 }
 

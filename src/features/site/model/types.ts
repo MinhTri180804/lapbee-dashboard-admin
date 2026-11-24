@@ -63,3 +63,6 @@ export type ErrorLocation = {
   kind?: ItemKind;
   field: string;
 };
+
+/** URLs of the media chosen on an item page, by media id (for previews and thumbnails). */
+export type MediaUrls = ReadonlyMap<string, { url: string; thumbUrl: string }>;
