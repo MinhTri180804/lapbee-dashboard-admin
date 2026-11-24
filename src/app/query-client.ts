@@ -23,13 +23,14 @@ const MAX_RETRIES = 2;
 /** Global error policy (spec §4.4): conflict → dialog event, the rest → toast. */
 function handleError(error: unknown, meta: AppQueryMeta | undefined): void {
   if (error instanceof ReauthCancelledError) return;
-  if (meta?.handlesErrors === true) return;
   // `session:expired` already signs out and redirects.
   if (isProblem(error, 'UNAUTHENTICATED')) return;
+  // The conflict dialog is global (spec §4.4); `handlesErrors` only suppresses the toast.
   if (isProblem(error, 'VERSION_CONFLICT')) {
     emit('conflict', { invalidates: meta?.invalidates ?? [] });
     return;
   }
+  if (meta?.handlesErrors === true) return;
   emit('toast', { kind: 'error', title: messageFor(error) });
 }
 

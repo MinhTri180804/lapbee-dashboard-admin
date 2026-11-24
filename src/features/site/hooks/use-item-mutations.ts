@@ -16,13 +16,17 @@ export function useCreateItem<K extends ItemKind>(
   });
 }
 
-/** No `handlesErrors`: the global handler must see VERSION_CONFLICT to open the conflict dialog. */
+/**
+ * `handlesErrors` defaults to true (the form shows field errors). List callers (toggle,
+ * reorder) pass `{ handlesErrors: false }` so non-conflict failures get the global toast.
+ */
 export function useUpdateItem<K extends ItemKind>(
   kind: K,
+  { handlesErrors = true }: { handlesErrors?: boolean } = {},
 ): UseMutationResult<SiteDto, Error, { id: string; body: ItemPatchBodyMap[K] }> {
   const qc = useQueryClient();
   return useMutation({
-    meta: { invalidates: [siteKeys.detail] },
+    meta: { invalidates: [siteKeys.detail], handlesErrors },
     mutationFn: ({ id, body }: { id: string; body: ItemPatchBodyMap[K] }) =>
       siteRepo.patchItem(kind, id, body),
     onSuccess: (site) => {
@@ -36,7 +40,7 @@ export function useDeleteItem(
 ): UseMutationResult<SiteDto, Error, { id: string; version: number }> {
   const qc = useQueryClient();
   return useMutation({
-    meta: { invalidates: [siteKeys.detail] },
+    meta: { invalidates: [siteKeys.detail], handlesErrors: true },
     mutationFn: ({ id, version }: { id: string; version: number }) =>
       siteRepo.deleteItem(kind, id, version),
     onSuccess: (site) => {
