@@ -98,6 +98,21 @@ describe('Button', () => {
 });
 
 describe('Dialog', () => {
+  it('is the default width unless size="wide"', () => {
+    const { rerender } = render(
+      <Dialog open title="Hộp" onClose={() => undefined}>
+        nội dung
+      </Dialog>,
+    );
+    expect(screen.getByRole('dialog', { name: 'Hộp' })).not.toHaveAttribute('data-size');
+    rerender(
+      <Dialog open title="Hộp" size="wide" onClose={() => undefined}>
+        nội dung
+      </Dialog>,
+    );
+    expect(screen.getByRole('dialog', { name: 'Hộp' })).toHaveAttribute('data-size', 'wide');
+  });
+
   it('calls onClose on Escape and restores focus', async () => {
     const onClose = vi.fn();
     function Host() {

@@ -1,0 +1,7 @@
+.count {
+  font-size: var(--fs-12);
+  color: var(--fg-3);
+}
+.over {
+  color: var(--warning);
+}

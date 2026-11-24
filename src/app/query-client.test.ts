@@ -43,7 +43,17 @@ describe('createQueryClient — mutation errors', () => {
     expect(spy.toast).not.toHaveBeenCalled();
   });
 
-  it('emits nothing when meta.handlesErrors is set', async () => {
+  it('still emits conflict for VERSION_CONFLICT when meta.handlesErrors is set', async () => {
+    const spy = listen();
+    await runMutation(problemError(409, 'VERSION_CONFLICT'), {
+      invalidates: [['site']],
+      handlesErrors: true,
+    });
+    expect(spy.conflict).toHaveBeenCalledWith({ invalidates: [['site']] });
+    expect(spy.toast).not.toHaveBeenCalled();
+  });
+
+  it('emits nothing else when meta.handlesErrors is set', async () => {
     const spy = listen();
     await runMutation(problemError(422, 'VALIDATION_FAILED'), { handlesErrors: true });
     expect(spy.conflict).not.toHaveBeenCalled();

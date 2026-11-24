@@ -1,0 +1,30 @@
+.handle {
+  display: grid;
+  place-items: center;
+  width: var(--space-6);
+  height: var(--space-8);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--fg-3);
+  cursor: grab;
+  touch-action: none;
+}
+.handle:hover:not(:disabled) {
+  color: var(--fg-1);
+  background: var(--surface-sunken);
+}
+.handle:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+.handle:disabled {
+  color: var(--fg-disabled);
+  cursor: not-allowed;
+}
+.dragging {
+  position: relative;
+  z-index: 1;
+  box-shadow: var(--shadow-2);
+}

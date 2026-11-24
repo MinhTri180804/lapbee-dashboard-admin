@@ -1,0 +1,62 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.item {
+  position: relative;
+  border-radius: var(--radius-md);
+}
+.card {
+  height: 100%;
+  overflow: hidden;
+}
+.photo,
+.placeholder {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+}
+.photo {
+  object-fit: cover;
+  background: var(--surface-sunken);
+}
+.placeholder {
+  display: flex;
+  align-items: flex-end;
+  padding: var(--space-3);
+  background:
+    repeating-linear-gradient(135deg, var(--ink-200) 0 1px, transparent 1px 10px),
+    var(--surface-sunken);
+}
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: 14px var(--space-4) var(--space-4);
+}
+.name {
+  font-size: var(--fs-16);
+  font-weight: var(--fw-semibold);
+}
+.role {
+  font-size: var(--fs-13);
+  color: var(--fg-2);
+}
+.foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+.handle {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--surface-card);
+}

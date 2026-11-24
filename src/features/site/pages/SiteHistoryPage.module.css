@@ -1,0 +1,21 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-4);
+}
+.pageInfo {
+  font-family: var(--font-mono);
+  font-size: var(--fs-13);
+  color: var(--text-muted);
+}
+.loading {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-12);
+}

@@ -27,3 +27,6 @@ if (typeof HTMLDialogElement !== 'undefined') {
     this.removeAttribute('open');
   };
 }
+
+// jsdom does not implement window.scrollTo (called by the router's <ScrollRestoration>).
+window.scrollTo = () => undefined;

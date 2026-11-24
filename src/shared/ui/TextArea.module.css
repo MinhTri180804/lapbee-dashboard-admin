@@ -1,0 +1,10 @@
+.control {
+  height: auto;
+  align-items: stretch;
+}
+.input {
+  height: auto;
+  padding: var(--space-3);
+  line-height: var(--lh-normal);
+  resize: vertical;
+}
