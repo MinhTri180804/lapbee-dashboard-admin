@@ -51,9 +51,16 @@ export type SiteItemPageProps = {
 
 /** Add/edit page of a service, team member or timeline milestone (`/site/:kind/new|:id`). */
 export function SiteItemPage({ kind, id }: SiteItemPageProps) {
-  const { data: site, isPending, isError } = useSite();
-  if (isPending) return <Spinner fullPage />;
-  if (isError) return <p role="alert">Không tải được thông tin website. Thử lại sau.</p>;
+  // Only a failed first load shows the error: a failed refetch keeps the cached data (and any
+  // unsaved edits); the global query error toast reports it.
+  const { data: site, isError } = useSite();
+  if (site === undefined) {
+    return isError ? (
+      <p role="alert">Không tải được thông tin website. Thử lại sau.</p>
+    ) : (
+      <Spinner fullPage />
+    );
+  }
   const editorProps = { site, id };
   switch (kind) {
     case 'services':

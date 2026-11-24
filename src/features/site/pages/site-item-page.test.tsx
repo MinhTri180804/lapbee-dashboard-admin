@@ -72,6 +72,20 @@ describe('SiteItemPage', () => {
     expect(screen.queryByRole('dialog', { name: 'Bỏ thay đổi chưa lưu?' })).not.toBeInTheDocument();
   });
 
+  it('keeps the editor and its edits when a background refetch fails', async () => {
+    mockSite();
+    const user = userEvent.setup();
+    const { queryClient } = renderItem('services', SERVICE.id);
+    await user.type(await screen.findByLabelText('Mô tả'), ', pin');
+    server.use(mock.get(`${BASE}/site`, () => problem(500, 'INTERNAL')));
+    await act(() => queryClient.invalidateQueries({ queryKey: siteKeys.detail }));
+    await waitFor(() => {
+      expect(queryClient.getQueryState(siteKeys.detail)?.status).toBe('error');
+    });
+    expect(screen.queryByText(/Không tải được thông tin website/)).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Mô tả')).toHaveValue(`${SERVICE.desc}, pin`);
+  });
+
   it('requires a title before sending', async () => {
     mockSite();
     let posts = 0;

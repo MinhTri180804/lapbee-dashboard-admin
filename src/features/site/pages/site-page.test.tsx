@@ -214,6 +214,22 @@ describe('SitePage', () => {
     expect(bodies[1]).toEqual({ version: 8, hours: '08:00 - 20:00 T7' });
   });
 
+  it('keeps the editor and its edits when a background refetch fails', async () => {
+    mockSite(cleanSite);
+    const user = userEvent.setup();
+    const { queryClient } = renderPage();
+    await loaded();
+    await user.type(screen.getByLabelText('Hotline'), '9');
+    server.use(mock.get(`${BASE}/site`, () => problem(500, 'INTERNAL')));
+    await act(() => queryClient.invalidateQueries({ queryKey: siteKeys.detail }));
+    await waitFor(() => {
+      expect(queryClient.getQueryState(siteKeys.detail)?.status).toBe('error');
+    });
+    expect(screen.queryByText(/Không tải được thông tin website/)).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Hotline')).toHaveValue('1900 12349');
+    expect(screen.getByText('Chưa lưu')).toBeInTheDocument();
+  });
+
   it('rebases typed edits onto the reloaded version after a conflict', async () => {
     let current: Site = cleanSite;
     server.use(mock.get(`${BASE}/site`, () => HttpResponse.json(current)));

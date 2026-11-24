@@ -57,9 +57,16 @@ function keepEdits(next: SettingsForm, previous: SettingsForm, current: Settings
 type Baseline = { initial: SettingsForm; version: number };
 
 export function SitePage() {
-  const { data: site, isPending, isError } = useSite();
-  if (isPending) return <Spinner fullPage />;
-  if (isError) return <p role="alert">Không tải được thông tin website. Thử lại sau.</p>;
+  // Only a failed first load shows the error: a failed refetch keeps the cached data (and any
+  // unsaved edits); the global query error toast reports it.
+  const { data: site, isError } = useSite();
+  if (site === undefined) {
+    return isError ? (
+      <p role="alert">Không tải được thông tin website. Thử lại sau.</p>
+    ) : (
+      <Spinner fullPage />
+    );
+  }
   return <SiteEditor site={site} />;
 }
 
