@@ -1,4 +1,9 @@
-import { useMutation, useQueryClient, type InfiniteData, type UseMutationResult } from '@tanstack/react-query';
+import {
+  useMutation,
+  useQueryClient,
+  type InfiniteData,
+  type UseMutationResult,
+} from '@tanstack/react-query';
 import { mediaRepo, type MediaDto, type MediaList } from '../api/repo';
 import { mediaKeys } from '../model/adapters';
 
