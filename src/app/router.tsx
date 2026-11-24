@@ -4,6 +4,7 @@ import type { Permission } from '@/shared/api/generated/permissions';
 import { RequireAuth, RequirePermission, type PermissionMode } from '@/shared/auth/permissions';
 import { useSession } from '@/shared/auth/session-store';
 import { AccountPage, LoginPage, SetupPasswordPage } from '@/features/auth';
+import { SitePage } from '@/features/site';
 import { Shell } from './layout/Shell';
 import { firstAllowedPath } from './nav';
 import { ComingSoonPage } from './pages/ComingSoonPage';
@@ -44,7 +45,7 @@ export const routes: RouteObject[] = [
           { index: true, element: <HomeRedirect /> },
           {
             path: '/site',
-            element: guarded('site.read', <ComingSoonPage title="Thông tin website" />),
+            element: guarded('site.read', <SitePage />),
           },
           { path: '/posts', element: guarded('post.read', <ComingSoonPage title="Bài đăng" />) },
           {

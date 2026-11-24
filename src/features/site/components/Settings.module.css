@@ -1,0 +1,43 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-5);
+}
+.gridNarrow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-5);
+}
+.sunken {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+}
+.stats {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.statRow {
+  display: grid;
+  grid-template-columns: 28px 140px minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: center;
+}
+.statNo {
+  font-family: var(--font-mono);
+  font-size: var(--fs-12);
+  color: var(--fg-3);
+}
+/* Keeps the label for assistive tech where the prototype shows none. */
+.hideLabel > label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
