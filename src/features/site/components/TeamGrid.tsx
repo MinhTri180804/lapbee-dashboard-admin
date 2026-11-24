@@ -13,7 +13,7 @@ export function TeamGrid() {
   const { data: site } = useSite();
   const navigate = useNavigate();
   const canUpdate = useCan('site.update');
-  const update = useUpdateItem('team', { handlesErrors: false });
+  const reorder = useUpdateItem('team', { handlesErrors: false });
   if (!site) return null;
   const team = site.draft.team;
 
@@ -41,9 +41,9 @@ export function TeamGrid() {
           items={team}
           titleOf={(m) => m.name}
           strategy={rectSortingStrategy}
-          onMove={(m, position, { onSettled }) => {
-            update.mutate({ id: m.id, body: { version: m.version, position } }, { onSettled });
-          }}
+          onMove={(m, position) =>
+            reorder.mutateAsync({ id: m.id, body: { version: m.version, position } })
+          }
         >
           {(ordered) => (
             <ul className={styles.grid}>

@@ -17,6 +17,8 @@ export function ServicesList() {
   const navigate = useNavigate();
   const canUpdate = useCan('site.update');
   const update = useUpdateItem('services', { handlesErrors: false });
+  /** Own instance, so a switch toggle cannot drop the reorder's settle. */
+  const reorder = useUpdateItem('services', { handlesErrors: false });
   if (!site) return null;
   const services = site.draft.services;
   const shown = services.filter((s) => s.visible).length;
@@ -49,9 +51,9 @@ export function ServicesList() {
           items={services}
           titleOf={(s) => s.title}
           strategy={verticalListSortingStrategy}
-          onMove={(s, position, { onSettled }) => {
-            update.mutate({ id: s.id, body: { version: s.version, position } }, { onSettled });
-          }}
+          onMove={(s, position) =>
+            reorder.mutateAsync({ id: s.id, body: { version: s.version, position } })
+          }
         >
           {(ordered) => (
             <ul className={styles.list}>

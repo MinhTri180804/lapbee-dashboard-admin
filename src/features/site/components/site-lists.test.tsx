@@ -46,6 +46,20 @@ function rowTitles() {
   return screen.getAllByRole('listitem').map((li) => within(li).getByRole('heading').textContent);
 }
 
+/** A promise the test opens by hand, to hold a mocked response. */
+function gate() {
+  let open: () => void = () => undefined;
+  const wait = new Promise<void>((resolve) => {
+    open = resolve;
+  });
+  return {
+    wait,
+    open: () => {
+      open();
+    },
+  };
+}
+
 async function dragDownOnce(handleName: string) {
   const user = userEvent.setup();
   const handle = screen.getByRole('button', { name: handleName });
@@ -131,24 +145,98 @@ describe('ServicesList', () => {
     });
   });
 
-  it('restores the order when the PATCH fails', async () => {
+  it('shows the new order, then restores it when the PATCH fails', async () => {
     mockSite();
-    let called = false;
+    const reorder = gate();
     server.use(
-      mock.patch(`${BASE}/site/services/:id`, () => {
-        called = true;
+      mock.patch(`${BASE}/site/services/:id`, async () => {
+        await reorder.wait;
         return problem(500, 'INTERNAL');
       }),
     );
     renderList(<ServicesList />);
     await screen.findByText('Sửa laptop');
     await dragDownOnce('Đổi thứ tự Sửa laptop');
-    await waitFor(() => {
-      expect(called).toBe(true);
+    expect(rowTitles()).toEqual(['Vệ sinh máy', 'Sửa laptop']);
+    act(() => {
+      reorder.open();
     });
     await waitFor(() => {
       expect(rowTitles()).toEqual(['Sửa laptop', 'Vệ sinh máy']);
     });
+  });
+
+  it('still rolls back a failed reorder when a switch is toggled meanwhile', async () => {
+    mockSite();
+    const reorder = gate();
+    const bodies: unknown[] = [];
+    server.use(
+      mock.patch(`${BASE}/site/services/:id`, async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>;
+        bodies.push(body);
+        if ('position' in body) {
+          await reorder.wait;
+          return problem(500, 'INTERNAL');
+        }
+        return HttpResponse.json(siteFixture);
+      }),
+    );
+    const user = userEvent.setup();
+    renderList(<ServicesList />);
+    await screen.findByText('Sửa laptop');
+    await dragDownOnce('Đổi thứ tự Sửa laptop');
+    expect(rowTitles()).toEqual(['Vệ sinh máy', 'Sửa laptop']);
+    await user.click(screen.getByRole('switch', { name: 'Hiện Vệ sinh máy' }));
+    await waitFor(() => {
+      expect(bodies).toHaveLength(2);
+    });
+    act(() => {
+      reorder.open();
+    });
+    await waitFor(() => {
+      expect(rowTitles()).toEqual(['Sửa laptop', 'Vệ sinh máy']);
+    });
+  });
+
+  it('ignores a second drag while a reorder is in flight', async () => {
+    mockSite();
+    const reorder = gate();
+    const bodies: unknown[] = [];
+    const reordered: SiteDto = {
+      ...siteFixture,
+      draft: {
+        ...siteFixture.draft,
+        services: [
+          { ...siteFixture.draft.services[1]!, position: 0 },
+          { ...siteFixture.draft.services[0]!, position: 1, version: 3 },
+        ],
+      },
+    };
+    server.use(
+      mock.patch(`${BASE}/site/services/:id`, async ({ request }) => {
+        bodies.push(await request.json());
+        await reorder.wait;
+        return HttpResponse.json(reordered);
+      }),
+    );
+    renderList(<ServicesList />);
+    await screen.findByText('Sửa laptop');
+    await dragDownOnce('Đổi thứ tự Sửa laptop');
+    await waitFor(() => {
+      expect(bodies).toHaveLength(1);
+    });
+    const handle = screen.getByRole('button', { name: 'Đổi thứ tự Vệ sinh máy' });
+    expect(handle).toHaveAttribute('aria-disabled', 'true');
+    await dragDownOnce('Đổi thứ tự Vệ sinh máy');
+    expect(rowTitles()).toEqual(['Vệ sinh máy', 'Sửa laptop']);
+    act(() => {
+      reorder.open();
+    });
+    await waitFor(() => {
+      expect(handle).not.toHaveAttribute('aria-disabled', 'true');
+    });
+    expect(bodies).toHaveLength(1);
+    expect(rowTitles()).toEqual(['Vệ sinh máy', 'Sửa laptop']);
   });
 
   it('without site.update hides add and disables handles and switches', async () => {

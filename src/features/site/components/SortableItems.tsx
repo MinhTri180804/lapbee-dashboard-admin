@@ -18,7 +18,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical } from 'lucide-react';
-import { useState, type CSSProperties, type ReactNode } from 'react';
+import { createContext, use, useState, type CSSProperties, type ReactNode } from 'react';
 import styles from './SortableItems.module.css';
 import { NO_UPDATE_TITLE } from './labels';
 
@@ -30,15 +30,23 @@ export type SortableItemsProps<T extends Sortable> = {
   /** Name used in the handle label and screen reader announcements. */
   titleOf: (item: T) => string;
   strategy: SortingStrategy;
-  /** Sends `{ version, position }` for the moved item; resolves or rejects with the request. */
-  onMove: (item: T, position: number, callbacks: { onSettled: () => void }) => void;
+  /**
+   * Sends `{ version, position }` for the moved item and returns the request. Use a
+   * dedicated `mutateAsync`: per-call `mutate` callbacks are dropped when the same
+   * mutation is called again before it settles.
+   */
+  onMove: (item: T, position: number) => Promise<unknown>;
   children: (items: readonly T[]) => ReactNode;
 };
+
+/** True while a reorder request is in flight: further drags are refused. */
+const ReorderBusy = createContext(false);
 
 /**
  * Keyboard and pointer reordering with an optimistic local order. The local order is
  * dropped once the request settles: on success the site cache already holds the new
- * order, on error the server order comes back.
+ * order, on error the server order comes back. One reorder at a time: a second drag would
+ * send an item version the first request has not updated yet.
  */
 export function SortableItems<T extends Sortable>({
   items,
@@ -78,17 +86,17 @@ export function SortableItems<T extends Sortable>({
   };
 
   const onDragEnd = ({ active, over }: DragEndEvent) => {
-    if (!over || active.id === over.id) return;
+    if (pending || !over || active.id === over.id) return;
     const from = ids.indexOf(String(active.id));
     const to = ids.indexOf(String(over.id));
     const item = byId.get(String(active.id));
     if (from < 0 || to < 0 || !item) return;
     setPending(arrayMove(ids, from, to));
-    onMove(item, to, {
-      onSettled: () => {
+    onMove(item, to)
+      .catch(() => undefined) // The global toast reports the failure.
+      .finally(() => {
         setPending(null);
-      },
-    });
+      });
   };
 
   return (
@@ -104,7 +112,7 @@ export function SortableItems<T extends Sortable>({
       }}
     >
       <SortableContext items={ids} strategy={strategy}>
-        {children(ordered)}
+        <ReorderBusy value={pending !== null}>{children(ordered)}</ReorderBusy>
       </SortableContext>
     </DndContext>
   );
@@ -114,6 +122,7 @@ export type SortableItemProps = {
   id: string;
   /** Item name for the handle label. */
   title: string;
+  /** No permission to reorder: the handle is disabled with a tooltip. */
   disabled: boolean;
   className?: string | undefined;
   /** Renders the item; `handle` is the drag handle button to place inside. */
@@ -122,6 +131,8 @@ export type SortableItemProps = {
 
 /** One sortable item; only the handle starts a drag, so the rest of the item stays clickable. */
 export function SortableItem({ id, title, disabled, className, children }: SortableItemProps) {
+  // While busy the handle stays focusable (aria-disabled) so keyboard focus is not lost.
+  const busy = use(ReorderBusy);
   const {
     attributes,
     listeners,
@@ -130,7 +141,7 @@ export function SortableItem({ id, title, disabled, className, children }: Sorta
     transform,
     transition,
     isDragging,
-  } = useSortable({ id, disabled });
+  } = useSortable({ id, disabled: disabled || busy });
   const style: CSSProperties = {
     transform: CSS.Translate.toString(transform),
     transition,
@@ -145,6 +156,7 @@ export function SortableItem({ id, title, disabled, className, children }: Sorta
       aria-label={`Đổi thứ tự ${title}`}
       title={disabled ? NO_UPDATE_TITLE : undefined}
       disabled={disabled}
+      aria-disabled={disabled || busy || undefined}
     >
       <GripVertical size={16} aria-hidden="true" />
     </button>
