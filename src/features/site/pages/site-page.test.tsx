@@ -256,6 +256,53 @@ describe('SitePage', () => {
     expect(bodies[1]).toEqual({ version: 9, phone: '1900 12349' });
   });
 
+  for (const action of ['Lưu nháp', 'Lưu & xuất bản'] as const) {
+    it(`rebases at once when "${action}" conflicts and the cache was already ahead`, async () => {
+      let current: Site = cleanSite;
+      server.use(mock.get(`${BASE}/site`, () => HttpResponse.json(current)));
+      const bodies: unknown[] = [];
+      server.use(
+        mock.patch(`${BASE}/site/settings`, async ({ request }) => {
+          bodies.push(await request.json());
+          if (bodies.length === 1) return problem(409, 'VERSION_CONFLICT');
+          return HttpResponse.json({ ...current, version: 10 });
+        }),
+        mock.post(`${BASE}/site/publish`, () =>
+          HttpResponse.json({ publication, site: { ...current, version: 10 } }),
+        ),
+      );
+      const user = userEvent.setup();
+      const { queryClient } = renderPage();
+      await loaded();
+      await user.type(screen.getByLabelText('Hotline'), '9');
+      // A background refetch brings v9 while the form is dirty: the baseline stays v7.
+      current = {
+        ...cleanSite,
+        version: 9,
+        draft: {
+          ...cleanSite.draft,
+          settings: { ...cleanSite.draft.settings, email: 'new@lapbee.test' },
+        },
+      };
+      await act(() => queryClient.invalidateQueries({ queryKey: siteKeys.detail }));
+      expect(screen.getByLabelText('Email')).toHaveValue('hello@lapbee.test');
+
+      await user.click(screen.getByRole('button', { name: action }));
+      await waitFor(() => {
+        expect(screen.getByLabelText('Email')).toHaveValue('new@lapbee.test');
+      });
+      expect(bodies).toEqual([{ version: 7, phone: '1900 12349' }]);
+      expect(screen.getByLabelText('Hotline')).toHaveValue('1900 12349');
+      expect(screen.getByText('Chưa lưu')).toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: action }));
+      await waitFor(() => {
+        expect(bodies).toHaveLength(2);
+      });
+      expect(bodies[1]).toEqual({ version: 9, phone: '1900 12349' });
+    });
+  }
+
   it('does not ask before leaving once the edits are saved', async () => {
     mockSite(cleanSite);
     server.use(

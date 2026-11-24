@@ -86,7 +86,7 @@ function SiteEditor({ site }: { site: SiteView }) {
   const hero = { showEyebrow, eyebrow, h1a, h1b, h1hl, lead, cta1, cta2, stats };
 
   const baseline = useRef<Baseline | null>(null);
-  /** Set after a version conflict: the reloaded settings replace the stale edits. */
+  /** Set after a version conflict: the next server version is rebased under the edits. */
   const resetOnNextVersion = useRef(false);
 
   /** Replaces the form with server settings, discarding edits (mount, clean form, revert). */
@@ -145,7 +145,15 @@ function SiteEditor({ site }: { site: SiteView }) {
   /** Shared handling for settings writes; conflicts are handled by the global dialog. */
   const handleWriteError = (error: unknown) => {
     if (isProblem(error, 'VERSION_CONFLICT')) {
-      resetOnNextVersion.current = true;
+      // A refetch may already have put a newer version in the cache while the form was dirty;
+      // the reload would then change nothing, so rebase onto it now. Otherwise wait for it.
+      const cached = qc.getQueryData<SiteDto>(siteKeys.detail);
+      const b = baseline.current;
+      if (cached && b && cached.version !== b.version) {
+        rebaseTo(cached.draft.settings, cached.version);
+      } else {
+        resetOnNextVersion.current = true;
+      }
       return;
     }
     if (isProblem(error, 'VALIDATION_FAILED')) {
@@ -176,7 +184,8 @@ function SiteEditor({ site }: { site: SiteView }) {
   const [publishErrors, setPublishErrors] = useState<FieldError[] | null>(null);
   const onPublish = () => {
     const patch = isDirty ? currentPatch() : null;
-    const openedVersion = baseline.current?.version;
+    // Compared with the cache after a failure to tell whether the PATCH went through.
+    const cachedVersion = qc.getQueryData<SiteDto>(siteKeys.detail)?.version;
     const sent = structuredClone(form.getValues());
     form.clearErrors();
     publish.mutate(
@@ -193,7 +202,7 @@ function SiteEditor({ site }: { site: SiteView }) {
         onError: (error) => {
           // The PATCH may have succeeded before publish failed: the edits are saved now.
           const cached = qc.getQueryData<SiteDto>(siteKeys.detail);
-          if (patch && cached && cached.version !== openedVersion) rebaseFromDto(cached, sent);
+          if (patch && cached && cached.version !== cachedVersion) rebaseFromDto(cached, sent);
           if (isProblem(error, 'NOTHING_TO_PUBLISH')) {
             toast.show({ kind: 'info', title: 'Không có thay đổi để xuất bản' });
           } else if (isProblem(error, 'SITE_INVALID')) {
