@@ -1,0 +1,42 @@
+.list {
+  display: flex;
+  gap: var(--space-6);
+  border-bottom: var(--hairline);
+  overflow-x: auto;
+}
+.tab {
+  position: relative;
+  padding: var(--space-3) 0;
+  border: 0;
+  background: transparent;
+  color: var(--fg-2);
+  font: inherit;
+  font-size: var(--fs-14);
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-out);
+}
+.tab::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: transparent;
+}
+.tab:hover {
+  color: var(--fg-1);
+}
+.selected {
+  color: var(--fg-1);
+}
+.selected::after {
+  background: var(--brand);
+}
+@media (prefers-reduced-motion: reduce) {
+  .tab {
+    transition: none;
+  }
+}
