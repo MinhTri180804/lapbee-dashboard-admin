@@ -60,7 +60,18 @@ export function FolderActions({ tree, folder, onSelect }: FolderActionsProps) {
 
   const rename = async (name: string) => {
     if (open?.kind !== 'rename') return;
-    await update.mutateAsync({ id: open.folder.id, body: { version: open.folder.version, name } });
+    if (name === open.folder.name) return; // Nothing changed: just close.
+    try {
+      await update.mutateAsync({
+        id: open.folder.id,
+        body: { version: open.folder.version, name },
+      });
+    } catch (error) {
+      // The global dialog owns a conflict; reopening reads the fresh version from the tree.
+      if (!isProblem(error, 'VERSION_CONFLICT')) throw error;
+      close();
+      return;
+    }
     toast.show({ kind: 'success', title: 'Đã đổi tên thư mục' });
   };
 
@@ -80,7 +91,10 @@ export function FolderActions({ tree, folder, onSelect }: FolderActionsProps) {
           toast.show({ kind: 'success', title: 'Đã chuyển thư mục' });
           close();
         },
-        onError: fail,
+        onError: (error) => {
+          fail(error);
+          if (isProblem(error, 'VERSION_CONFLICT')) close();
+        },
       },
     );
   };
@@ -98,7 +112,7 @@ export function FolderActions({ tree, folder, onSelect }: FolderActionsProps) {
         },
         onError: (error) => {
           fail(error);
-          if (isProblem(error, 'FOLDER_NOT_EMPTY')) close();
+          if (isProblem(error, 'FOLDER_NOT_EMPTY') || isProblem(error, 'VERSION_CONFLICT')) close();
         },
       },
     );

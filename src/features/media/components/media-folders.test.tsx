@@ -270,4 +270,92 @@ describe('folder management', () => {
     );
     expect(await screen.findByText('Thư mục còn ảnh hoặc thư mục con.')).toBeInTheDocument();
   });
+
+  it('closes the rename dialog on a version conflict; reopening sends the fresh version', async () => {
+    const user = userEvent.setup();
+    let version = 1;
+    server.use(
+      mock.get(`${BASE}/media/folders`, () =>
+        HttpResponse.json({
+          items: folderFixtures.map((f) => (f.id === FOLDER.journey ? { ...f, version } : f)),
+        }),
+      ),
+      mock.get(`${BASE}/media`, () =>
+        HttpResponse.json({ items: [], total: 0, page: 1, perPage: 40 }),
+      ),
+    );
+    const bodies: Record<string, unknown>[] = [];
+    server.use(
+      mock.patch(`${BASE}/media/folders/:id`, async ({ request }) => {
+        bodies.push(await bodyOf(request));
+        if (bodies.length === 1) {
+          version = 2;
+          return problem(409, 'VERSION_CONFLICT');
+        }
+        return HttpResponse.json({ ...folderFixtures[2], name: 'Mới', version: 3 });
+      }),
+    );
+    const { queryClient } = renderPage(FOLDER.journey);
+    await user.click(await screen.findByRole('button', { name: 'Đổi tên' }));
+    let dialog = screen.getByRole('dialog', { name: 'Đổi tên thư mục' });
+    const field = within(dialog).getByRole('textbox', { name: 'Tên thư mục' });
+    await user.clear(field);
+    await user.type(field, 'Mới');
+    await user.click(within(dialog).getByRole('button', { name: 'Lưu' }));
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Đổi tên thư mục' })).not.toBeInTheDocument();
+    });
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    await queryClient.invalidateQueries();
+
+    await user.click(await screen.findByRole('button', { name: 'Đổi tên' }));
+    dialog = screen.getByRole('dialog', { name: 'Đổi tên thư mục' });
+    const again = within(dialog).getByRole('textbox', { name: 'Tên thư mục' });
+    await user.clear(again);
+    await user.type(again, 'Mới');
+    await user.click(within(dialog).getByRole('button', { name: 'Lưu' }));
+    await waitFor(() => {
+      expect(bodies).toHaveLength(2);
+    });
+    expect(bodies[1]).toEqual({ version: 2, name: 'Mới' });
+  });
+
+  it('closes the delete confirm on a version conflict', async () => {
+    const user = userEvent.setup();
+    serveLibrary();
+    server.use(mock.delete(`${BASE}/media/folders/:id`, () => problem(409, 'VERSION_CONFLICT')));
+    renderPage(FOLDER.services);
+    await user.click(await screen.findByRole('button', { name: 'Xoá' }));
+    await user.click(
+      within(screen.getByRole('dialog', { name: 'Xoá thư mục Dịch vụ?' })).getByRole('button', {
+        name: 'Xoá',
+      }),
+    );
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', { name: 'Xoá thư mục Dịch vụ?' }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it('renaming to the same name sends nothing and closes', async () => {
+    const user = userEvent.setup();
+    serveLibrary();
+    let patched = 0;
+    server.use(
+      mock.patch(`${BASE}/media/folders/:id`, () => {
+        patched += 1;
+        return HttpResponse.json(folderFixtures[2]);
+      }),
+    );
+    renderPage(FOLDER.journey);
+    await user.click(await screen.findByRole('button', { name: 'Đổi tên' }));
+    const dialog = screen.getByRole('dialog', { name: 'Đổi tên thư mục' });
+    await user.type(within(dialog).getByRole('textbox', { name: 'Tên thư mục' }), ' ');
+    await user.click(within(dialog).getByRole('button', { name: 'Lưu' }));
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Đổi tên thư mục' })).not.toBeInTheDocument();
+    });
+    expect(patched).toBe(0);
+  });
 });
