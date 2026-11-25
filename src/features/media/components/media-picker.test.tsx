@@ -1,8 +1,9 @@
+import { useState } from 'react';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http as mock, HttpResponse } from 'msw';
-import { describe, expect, it, vi } from 'vitest';
-import { mediaItem, mediaListFixture } from '@/test/fixtures/media';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { FOLDER, foldersFixture, mediaItem, mediaListFixture } from '@/test/fixtures/media';
 import { problem } from '@/test/msw/problem';
 import { server } from '@/test/msw/server';
 import { renderWithProviders } from '@/test/render';
@@ -20,6 +21,10 @@ function setup(permissions: string[], props: { onPick?: () => void } = {}) {
   });
   return { onPick, onClose };
 }
+
+beforeEach(() => {
+  server.use(mock.get(`${BASE}/media/folders`, () => HttpResponse.json(foldersFixture)));
+});
 
 describe('MediaPicker', () => {
   it('shows the grid from the list and picks a MediaThumb', async () => {
@@ -81,10 +86,10 @@ describe('MediaPicker', () => {
     const user = userEvent.setup();
     setup(READ);
     await screen.findByAltText('Mô tả 10');
-    await user.click(screen.getByRole('button', { name: 'Xem thêm' }));
+    await user.click(screen.getByRole('button', { name: 'Tải thêm' }));
     await screen.findByAltText('Mô tả 20');
     expect(screen.getByAltText('Mô tả 10')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Xem thêm' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Tải thêm' })).not.toBeInTheDocument();
   });
 
   it('uploads a file as multipart and selects the new image first', async () => {
@@ -144,11 +149,79 @@ describe('MediaPicker', () => {
     await screen.findByAltText('anh-1.jpg');
   });
 
-  it('hides the upload button without media.upload', async () => {
+  it('disables the upload control with a tooltip without media.upload', async () => {
     server.use(mock.get(`${BASE}/media`, () => HttpResponse.json(mediaListFixture)));
     setup(READ);
     await screen.findByAltText('anh-1.jpg');
-    expect(screen.queryByLabelText('Tải ảnh lên')).not.toBeInTheDocument();
+    const input = screen.getByLabelText('Tải ảnh lên');
+    expect(input).toBeDisabled();
+    expect(input.closest('label')).toHaveAttribute(
+      'title',
+      'Bạn không có quyền tải ảnh lên thư viện.',
+    );
+  });
+
+  it('filters by folder, drops folderId when searching, and uploads into the folder', async () => {
+    const urls: URL[] = [];
+    let uploadFolder: FormDataEntryValue | null = null;
+    const created = mediaItem(99);
+    server.use(
+      mock.get(`${BASE}/media`, ({ request }) => {
+        urls.push(new URL(request.url));
+        return HttpResponse.json(mediaListFixture);
+      }),
+      mock.post(`${BASE}/media`, async ({ request }) => {
+        uploadFolder = (await request.formData()).get('folderId');
+        return HttpResponse.json(created, { status: 201 });
+      }),
+    );
+    const user = userEvent.setup();
+    const { onPick } = setup(UPLOAD);
+    await screen.findByAltText('anh-1.jpg');
+    expect(urls.at(-1)?.searchParams.has('folderId')).toBe(false);
+    await user.click(await screen.findByRole('button', { name: 'Đội ngũ' }));
+    await waitFor(() => {
+      expect(urls.at(-1)?.searchParams.get('folderId')).toBe(FOLDER.team);
+    });
+    await user.upload(
+      screen.getByLabelText('Tải ảnh lên'),
+      new File(['x'], 'moi.png', { type: 'image/png' }),
+    );
+    await waitFor(() => {
+      expect(onPick).toHaveBeenCalledWith(expect.objectContaining({ id: created.id }));
+    });
+    expect(uploadFolder).toBe(FOLDER.team);
+    await user.type(screen.getByLabelText('Tìm trong thư viện'), 'mac');
+    await waitFor(() => {
+      const last = urls.at(-1);
+      expect(last?.searchParams.get('q')).toBe('mac');
+      expect(last?.searchParams.has('folderId')).toBe(false);
+    });
+  });
+
+  it('resets search and folder when closed and reopened', async () => {
+    server.use(mock.get(`${BASE}/media`, () => HttpResponse.json(mediaListFixture)));
+    const user = userEvent.setup();
+    function Harness() {
+      const [open, setOpen] = useState(true);
+      return (
+        <>
+          <button type="button" onClick={() => { setOpen((o) => !o); }}>
+            toggle
+          </button>
+          <MediaPicker open={open} onClose={vi.fn()} onPick={vi.fn()} />
+        </>
+      );
+    }
+    renderWithProviders(<Harness />, { session: { permissions: READ } });
+    await screen.findByAltText('anh-1.jpg');
+    await user.click(await screen.findByRole('button', { name: 'Đội ngũ' }));
+    await user.type(screen.getByLabelText('Tìm trong thư viện'), 'mac');
+    await user.click(screen.getByRole('button', { name: 'toggle', hidden: true }));
+    await user.click(screen.getByRole('button', { name: 'toggle', hidden: true }));
+    expect(screen.getByLabelText('Tìm trong thư viện')).toHaveValue('');
+    expect(screen.getByRole('button', { name: 'Tất cả ảnh' })).toHaveAttribute('aria-current');
+    expect(screen.getByRole('button', { name: 'Đội ngũ' })).not.toHaveAttribute('aria-current');
   });
 
   it('does not call the API without media.read', () => {

@@ -7,12 +7,15 @@ import {
 import { mediaRepo, type MediaDto, type MediaList } from '../api/repo';
 import { mediaKeys } from '../model/adapters';
 
-/** The caller shows upload errors itself. The new item is put first in every cached list. */
-export function useUploadMedia(): UseMutationResult<MediaDto, Error, File> {
+export type UploadMediaInput = { file: File; folderId: string | null };
+
+/** The caller shows upload errors itself. Every media query is invalidated after the upload. */
+export function useUploadMedia(): UseMutationResult<MediaDto, Error, UploadMediaInput> {
   const queryClient = useQueryClient();
   return useMutation({
-    meta: { handlesErrors: true },
-    mutationFn: (file: File) => mediaRepo.upload(file, {}),
+    meta: { handlesErrors: true, invalidates: [mediaKeys.all] },
+    mutationFn: ({ file, folderId }: UploadMediaInput) =>
+      mediaRepo.upload(file, folderId ? { folderId } : {}),
     onSuccess: (created) => {
       queryClient.setQueriesData<InfiniteData<MediaList, number>>(
         { queryKey: [...mediaKeys.all, 'list'] },
