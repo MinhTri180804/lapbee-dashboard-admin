@@ -293,6 +293,52 @@ describe('MediaDetailPanel', () => {
     expect(del).toHaveAttribute('title', 'Bạn không có quyền xoá ảnh');
   });
 
+  it('blocks delete while a move is in flight and the folder and save while a delete is', async () => {
+    const user = userEvent.setup();
+    serve();
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    server.use(
+      mock.patch(`${BASE}/media/:id`, async () => {
+        await gate;
+        return ok(mediaDetail(1, { folderId: null, version: 4 }));
+      }),
+    );
+    renderPanel();
+    const folder = await screen.findByLabelText('Thư mục');
+    await waitFor(() => {
+      expect(folder).toHaveDisplayValue('Hành trình / 2024');
+    });
+    await user.selectOptions(folder, 'Gốc thư viện');
+    expect(screen.getByRole('button', { name: 'Xoá ảnh' })).toBeDisabled();
+    release();
+    await screen.findByText('Đã chuyển ảnh');
+    expect(screen.getByRole('button', { name: 'Xoá ảnh' })).toBeEnabled();
+
+    let finish: () => void = () => undefined;
+    const hold = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    server.use(
+      mock.delete(`${BASE}/media/:id`, async () => {
+        await hold;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Xoá ảnh' }));
+    await user.click(
+      within(screen.getByRole('dialog', { name: 'Xoá ảnh anh-1.jpg?' })).getByRole('button', {
+        name: 'Xoá',
+      }),
+    );
+    await waitFor(() => {
+      expect(screen.getByLabelText('Thư mục')).toBeDisabled();
+    });
+    finish();
+  });
+
   it('starts fresh when another image is opened', async () => {
     const user = userEvent.setup();
     serve();

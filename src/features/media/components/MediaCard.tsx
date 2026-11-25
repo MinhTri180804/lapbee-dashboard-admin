@@ -10,6 +10,10 @@ export type MediaCardProps = {
   onOpen: () => void;
   onToggleCheck: () => void;
   checkable: boolean;
+  /** Some image is checked: every box stays visible. */
+  selecting?: boolean;
+  /** The limit is reached: the unchecked boxes are off. */
+  checkDisabled?: boolean;
 };
 
 export function MediaCard({
@@ -19,9 +23,14 @@ export function MediaCard({
   onOpen,
   onToggleCheck,
   checkable,
+  selecting = false,
+  checkDisabled = false,
 }: MediaCardProps) {
   return (
-    <div className={cx(styles.card, selected && styles.selected)}>
+    <div
+      className={cx(styles.card, selected && styles.selected)}
+      data-selecting={selecting || checked || undefined}
+    >
       <button
         type="button"
         className={styles.open}
@@ -50,6 +59,7 @@ export function MediaCard({
           className={styles.check}
           aria-label={`Chọn ${media.name}`}
           checked={checked}
+          disabled={checkDisabled && !checked}
           onChange={onToggleCheck}
         />
       )}

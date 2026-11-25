@@ -11,6 +11,11 @@ export type MediaGridProps = {
   hasMore: boolean;
   loadingMore: boolean;
   onLoadMore: () => void;
+  checked: ReadonlySet<string>;
+  onToggleCheck: (id: string) => void;
+  checkable: boolean;
+  /** The selection is full: unchecked boxes are off. */
+  checkFull: boolean;
 };
 
 export function MediaGrid({
@@ -21,6 +26,10 @@ export function MediaGrid({
   hasMore,
   loadingMore,
   onLoadMore,
+  checked,
+  onToggleCheck,
+  checkable,
+  checkFull,
 }: MediaGridProps) {
   if (items.length === 0) return <p className={styles.empty}>{emptyText}</p>;
   return (
@@ -31,12 +40,16 @@ export function MediaGrid({
             <MediaCard
               media={media}
               selected={media.id === openId}
-              checked={false}
-              checkable={false}
+              checked={checked.has(media.id)}
+              checkable={checkable}
+              selecting={checked.size > 0}
+              checkDisabled={checkFull}
               onOpen={() => {
                 onOpen(media.id);
               }}
-              onToggleCheck={() => undefined}
+              onToggleCheck={() => {
+                onToggleCheck(media.id);
+              }}
             />
           </li>
         ))}

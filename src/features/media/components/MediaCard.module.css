@@ -62,3 +62,16 @@
   height: 18px;
   accent-color: var(--brand);
 }
+/* Visible on hover or focus, or once any image is checked. */
+.check {
+  opacity: 0;
+  cursor: pointer;
+}
+.card:hover .check,
+.card:focus-within .check,
+.card[data-selecting] .check {
+  opacity: 1;
+}
+.check:disabled {
+  cursor: not-allowed;
+}

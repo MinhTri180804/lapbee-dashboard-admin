@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Trash2, X } from 'lucide-react';
-import { useState, useSyncExternalStore, type ReactNode } from 'react';
+import { useId, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 import { isProblem } from '@/shared/api/errors';
@@ -193,6 +193,7 @@ function DetailForm({
   const [moved, setMoved] = useState<{ folderId: string | null; version: number } | null>(null);
   const folderId = moved && moved.version >= live.version ? moved.folderId : live.folderId;
   const [confirming, setConfirming] = useState(false);
+  const usagesId = useId();
 
   const busy = update.isPending;
   const saving = busy && update.variables.body.folderId === undefined;
@@ -317,13 +318,13 @@ function DetailForm({
             label="Thư mục"
             options={options}
             value={folderValue}
-            disabled={!canUpdate || busy}
+            disabled={!canUpdate || busy || deleting}
             onChange={move}
           />
         </div>
 
-        <section className={styles.usages} aria-labelledby="media-usages">
-          <h3 id="media-usages" className="lb-label">
+        <section className={styles.usages} aria-labelledby={usagesId}>
+          <h3 id={usagesId} className="lb-label">
             Đang dùng ở
           </h3>
           {used ? (
@@ -344,7 +345,7 @@ function DetailForm({
             type="submit"
             variant="primary"
             loading={saving}
-            disabled={!canUpdate || !isDirty || busy}
+            disabled={!canUpdate || !isDirty || busy || deleting}
             title={canUpdate ? undefined : NO_UPDATE}
           >
             Lưu thay đổi
@@ -353,7 +354,7 @@ function DetailForm({
             variant="ghost"
             icon={Trash2}
             className={styles.danger}
-            disabled={!canDelete || used}
+            disabled={!canDelete || used || busy}
             title={deleteTitle}
             onClick={() => {
               setConfirming(true);

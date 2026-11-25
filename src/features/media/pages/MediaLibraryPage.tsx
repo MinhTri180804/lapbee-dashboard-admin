@@ -2,12 +2,15 @@ import { CircleDashed, FolderPlus, Images, Search, Upload } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { useCan } from '@/shared/auth/permissions';
-import { Button, PageHeader, Spinner } from '@/shared/ui';
+import { Button, PageHeader, Spinner, useToast } from '@/shared/ui';
 import { FolderTree } from '../components/FolderTree';
 import { MediaDetailPanel, useNarrowPanel } from '../components/MediaDetailPanel';
 import { MediaGrid } from '../components/MediaGrid';
+import { MoveDialog } from '../components/MoveDialog';
+import { MAX_SELECTION, SelectionBar } from '../components/SelectionBar';
 import { UploadQueue } from '../components/UploadQueue';
 import { useFolders } from '../hooks/use-folders';
+import { useMoveMedia } from '../hooks/use-media-mutations';
 import { useMediaList } from '../hooks/use-media-list';
 import { useMediaTotal } from '../hooks/use-media-total';
 import { useUploadQueue } from '../hooks/use-upload-queue';
@@ -33,6 +36,8 @@ function uploadTarget(params: MediaListParams): string | null {
 
 export function MediaLibraryPage() {
   const canUpload = useCan('media.upload');
+  const canMove = useCan('media.update');
+  const toast = useToast();
   const [sp, setSp] = useSearchParams();
   const params = paramsFrom(sp);
   const openId = sp.get('id');
@@ -44,6 +49,40 @@ export function MediaLibraryPage() {
   const list = useMediaList(params);
   const queue = useUploadQueue();
   const fileInput = useRef<HTMLInputElement>(null);
+  const move = useMoveMedia();
+
+  const [checked, setChecked] = useState<ReadonlySet<string>>(() => new Set());
+  const [moving, setMoving] = useState(false);
+  // A new folder, view or search starts with nothing checked.
+  const scope = `${params.folder ?? ''}|${String(params.used)}|${params.q}`;
+  const [shownScope, setShownScope] = useState(scope);
+  if (shownScope !== scope) {
+    setShownScope(scope);
+    setChecked(new Set());
+    setMoving(false);
+  }
+
+  const toggleCheck = (id: string) => {
+    setChecked((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else if (next.size < MAX_SELECTION) next.add(id);
+      return next;
+    });
+  };
+
+  const moveChecked = (target: string | null) => {
+    move.mutate(
+      { ids: Array.from(checked), folderId: target },
+      {
+        onSuccess: ({ moved }) => {
+          toast.show({ kind: 'success', title: `Đã chuyển ${String(moved)} ảnh` });
+          setChecked(new Set());
+          setMoving(false);
+        },
+      },
+    );
+  };
 
   const [search, setSearch] = useState(params.q);
   const [shownQ, setShownQ] = useState(params.q);
@@ -247,6 +286,19 @@ export function MediaLibraryPage() {
             </div>
           </div>
 
+          {checked.size > 0 && (
+            <SelectionBar
+              count={checked.size}
+              canMove={canMove}
+              onMove={() => {
+                setMoving(true);
+              }}
+              onClear={() => {
+                setChecked(new Set());
+              }}
+            />
+          )}
+
           {list.data === undefined ? (
             list.isError ? (
               <p role="alert" className={styles.error}>
@@ -264,12 +316,28 @@ export function MediaLibraryPage() {
               hasMore={list.hasNextPage}
               loadingMore={list.isFetchingNextPage}
               onLoadMore={() => void list.fetchNextPage()}
+              checked={checked}
+              onToggleCheck={toggleCheck}
+              checkable
+              checkFull={checked.size >= MAX_SELECTION}
             />
           )}
         </section>
 
         {openId && <MediaDetailPanel key={openId} id={openId} onClose={close} />}
       </div>
+
+      <MoveDialog
+        open={moving}
+        title={`Chuyển ${String(checked.size)} ảnh tới`}
+        tree={tree}
+        movingFolderId={null}
+        currentFolderId={params.folder && params.folder !== 'root' ? params.folder : null}
+        onClose={() => {
+          setMoving(false);
+        }}
+        onConfirm={moveChecked}
+      />
 
       <UploadQueue items={queue.items} busy={queue.busy} onClose={queue.clearFinished} />
     </div>
