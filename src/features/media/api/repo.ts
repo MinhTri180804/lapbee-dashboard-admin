@@ -44,7 +44,7 @@ export const mediaRepo = {
     async list(): Promise<FolderDto[]> {
       return (await http.get<{ items: FolderDto[] }>('/media/folders')).data.items;
     },
-    async create(body: { name: string; parentId: string | null }): Promise<FolderDto> {
+    async create(body: Body<'/admin/v1/media/folders', 'post'>): Promise<FolderDto> {
       return (await http.post<FolderDto>('/media/folders', body)).data;
     },
     async update(

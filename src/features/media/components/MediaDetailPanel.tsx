@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Trash2, X } from 'lucide-react';
-import { useId, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 import { isProblem } from '@/shared/api/errors';
@@ -87,6 +87,11 @@ function folderOptions(tree: FolderNode[]): { value: string; label: string }[] {
 
 export type MediaDetailPanelProps = {
   id: string;
+  /**
+   * Bumped by the page when the user's own bulk move included this image: the panel then
+   * adopts the next server version instead of conflicting with the user's own write.
+   */
+  ownMoves?: number;
   onClose: () => void;
 };
 
@@ -94,7 +99,7 @@ export type MediaDetailPanelProps = {
  * The open image (P3-4): rename and alt in one form, the folder saved on change, usages and
  * delete. A right column on wide screens, a wide dialog on narrow ones. Key it by `id`.
  */
-export function MediaDetailPanel({ id, onClose }: MediaDetailPanelProps) {
+export function MediaDetailPanel({ id, ownMoves = 0, onClose }: MediaDetailPanelProps) {
   const narrow = useNarrowPanel();
   const toast = useToast();
   const remove = useDeleteMedia();
@@ -137,6 +142,7 @@ export function MediaDetailPanel({ id, onClose }: MediaDetailPanelProps) {
     body = (
       <DetailForm
         live={detail.data}
+        ownMoves={ownMoves}
         deleting={deleting}
         onDelete={deleteMedia}
         onReload={() => void detail.refetch()}
@@ -161,12 +167,14 @@ export function MediaDetailPanel({ id, onClose }: MediaDetailPanelProps) {
 
 function DetailForm({
   live,
+  ownMoves,
   deleting,
   onDelete,
   onReload,
 }: {
   /** The image as the cache holds it now; the form keeps the copy it opened with. */
   live: MediaDetailDto;
+  ownMoves: number;
   deleting: boolean;
   onDelete: (version: number, onFail: (error: Error) => void) => void;
   onReload: () => void;
@@ -181,10 +189,17 @@ function DetailForm({
     defaultValues: toValues(live),
     resolver: zodResolver(schema),
   });
-  const { baseline, onConflict, rebaseFromSent } = useRebasingForm({
+  const { baseline, onConflict, rebaseFromSent, rebaseOnNextVersion } = useRebasingForm({
     form,
     server: { values: toValues(live), version: live.version },
   });
+  // Only a bump after the form opened counts; the count it opened with is history.
+  const seenMoves = useRef(ownMoves);
+  useEffect(() => {
+    if (ownMoves === seenMoves.current) return;
+    seenMoves.current = ownMoves;
+    rebaseOnNextVersion();
+  }, [ownMoves, rebaseOnNextVersion]);
   const { register, formState, handleSubmit } = form;
   const { errors, isDirty } = formState;
   const alt = useWatch({ control: form.control, name: 'alt' });

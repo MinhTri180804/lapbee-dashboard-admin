@@ -143,6 +143,43 @@ describe('useRebasingForm', () => {
     expect(result.current.form.getValues('email')).toBe('new@lapbee.test');
   });
 
+  it('rebaseOnNextVersion adopts the next version (our own write) keeping edits', () => {
+    const { result, rerender } = setup();
+    type(result.current.form, '1900 9999');
+    act(() => {
+      result.current.rebaseOnNextVersion();
+    });
+    expect(result.current.baseline.version).toBe(7);
+
+    // The refetch after our own bulk move brings v8.
+    rerender({ server: { values: V7, version: 8 } });
+    expect(result.current.baseline.version).toBe(8);
+    expect(result.current.form.getValues('phone')).toBe('1900 9999');
+    expect(result.current.form.formState.dirtyFields).toEqual({ phone: true });
+
+    // Only that one version: a later one is someone else's and is not adopted.
+    rerender({ server: { values: serverChange('later@lapbee.test'), version: 9 } });
+    expect(result.current.baseline.version).toBe(8);
+    expect(result.current.form.getValues('email')).toBe(V7.email);
+  });
+
+  it('rebaseOnNextVersion skips a version the cache already held when called', () => {
+    const { result, rerender } = setup();
+    // Someone else's v8 is already cached: it must not be adopted silently.
+    rerender({ server: { values: serverChange('other@lapbee.test'), version: 8 } });
+    act(() => {
+      result.current.rebaseOnNextVersion();
+    });
+    type(result.current.form, '1900 9999');
+    expect(result.current.baseline.version).toBe(7);
+    expect(result.current.form.getValues('email')).toBe(V7.email);
+
+    rerender({ server: { values: serverChange('other@lapbee.test'), version: 9 } });
+    expect(result.current.baseline.version).toBe(9);
+    expect(result.current.form.getValues('email')).toBe('other@lapbee.test');
+    expect(result.current.form.getValues('phone')).toBe('1900 9999');
+  });
+
   it('never moves a clean form unless asked to follow the server', () => {
     const { result, rerender } = setup();
     rerender({ server: { values: serverChange('new@lapbee.test'), version: 9 } });

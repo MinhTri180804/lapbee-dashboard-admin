@@ -10,6 +10,7 @@ import { server } from '@/test/msw/server';
 import { createWrapper } from '@/test/render';
 import { mediaKeys, type MediaListParams } from '../model/adapters';
 import { useFolders } from './use-folders';
+import { useDeleteFolder } from './use-folder-mutations';
 import { useDeleteMedia, useMoveMedia } from './use-media-mutations';
 import { useMediaDetail } from './use-media-detail';
 import { useMediaList } from './use-media-list';
@@ -247,6 +248,61 @@ describe('useDeleteMedia', () => {
     await act(() => result.current.mutateAsync({ id: 'm-1', version: 3 }).catch(() => undefined));
     expect(conflict).toHaveBeenCalledWith({ invalidates: [mediaKeys.all] });
     expect(toast).not.toHaveBeenCalled();
+  });
+});
+
+describe('useDeleteFolder', () => {
+  it('drops the deleted folder list instead of refetching it into a 400 toast', async () => {
+    const listFolders: (string | null)[] = [];
+    server.use(
+      mock.get(`${BASE}/media`, ({ request }) => {
+        const folderId = new URL(request.url).searchParams.get('folderId');
+        listFolders.push(folderId);
+        // The backend rejects a folderId that no longer exists.
+        if (folderId === FOLDER.posts && listFolders.length > 1) {
+          return problem(400, 'VALIDATION_FAILED');
+        }
+        return HttpResponse.json({ ...mediaListFixture, total: 3, page: 1, perPage: 40 });
+      }),
+      mock.delete(`${BASE}/media/folders/:id`, () => new HttpResponse(null, { status: 204 })),
+    );
+    const toast = vi.fn();
+    offs.push(on('toast', toast));
+    // As FolderActions does: the list stays on the folder until the caller's onSuccess moves up.
+    const { result } = renderHook(
+      () => {
+        const [folder, setFolder] = useState<string | null>(FOLDER.posts);
+        return {
+          folder,
+          list: useMediaList({ folder, q: '', used: null }),
+          del: useDeleteFolder(),
+          goUp: () => {
+            setFolder(null);
+          },
+        };
+      },
+      { wrapper: createWrapper(createQueryClient()) },
+    );
+    await waitFor(() => {
+      expect(result.current.list.isSuccess).toBe(true);
+    });
+    await act(
+      () =>
+        new Promise<void>((resolve) => {
+          result.current.del.mutate(
+            { id: FOLDER.posts, version: 1 },
+            {
+              onSuccess: () => {
+                result.current.goUp();
+                resolve();
+              },
+            },
+          );
+        }),
+    );
+    await new Promise((r) => setTimeout(r, 30));
+    expect(toast).not.toHaveBeenCalled();
+    expect(listFolders.filter((f) => f === FOLDER.posts)).toHaveLength(1);
   });
 });
 

@@ -1,9 +1,7 @@
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { useState, useSyncExternalStore } from 'react';
-import { ProblemError } from '@/shared/api/errors';
-import { messageFor } from '@/shared/form/error-messages';
 import { mediaRepo, type MediaDto } from '../api/repo';
-import { mediaKeys, uploadErrorMessage } from '../model/adapters';
+import { mediaKeys, uploadErrorText } from '../model/adapters';
 
 export type UploadItem = {
   key: string;
@@ -26,14 +24,6 @@ export type UploadQueue = {
 const CONCURRENCY = 2;
 
 type Job = { key: string; file: File; folderId: string | null };
-
-function errorText(error: unknown): string {
-  // Upload codes (MEDIA_TOO_LARGE…) have their own copy; anything else uses the global table.
-  if (error instanceof ProblemError && error.code.startsWith('MEDIA_')) {
-    return uploadErrorMessage(error.code);
-  }
-  return messageFor(error);
-}
 
 /**
  * A queue that lives outside React state, so re-renders never restart it and clearing the
@@ -74,7 +64,7 @@ function createUploadStore(qc: QueryClient) {
             void qc.invalidateQueries({ queryKey: mediaKeys.all });
           },
           (error: unknown) => {
-            patch(job.key, { status: 'error', error: errorText(error) });
+            patch(job.key, { status: 'error', error: uploadErrorText(error) });
           },
         )
         .finally(() => {

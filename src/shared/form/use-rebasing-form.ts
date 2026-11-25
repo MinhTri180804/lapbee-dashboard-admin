@@ -72,6 +72,8 @@ export function useRebasingForm<T extends FieldValues>({
   };
   /** Set after a version conflict: the next server version is rebased under the edits. */
   const waiting = useRef(false);
+  /** While waiting, a server version that does not count as the next one (see below). */
+  const skipVersion = useRef<number | null>(null);
 
   /** The server copy and callback of the latest render, read by handlers that run later. */
   const latest = useRef({ server, onGone });
@@ -84,6 +86,7 @@ export function useRebasingForm<T extends FieldValues>({
     (next: { values: T; version: number }) => {
       baselineRef.current = { initial: structuredClone(next.values), version: next.version };
       waiting.current = false;
+      skipVersion.current = null;
       form.reset(next.values);
     },
     [form],
@@ -100,6 +103,7 @@ export function useRebasingForm<T extends FieldValues>({
       const merged = keepEdits(next.values, since, form.getValues());
       baselineRef.current = { initial: structuredClone(next.values), version: next.version };
       waiting.current = false;
+      skipVersion.current = null;
       form.reset(next.values);
       form.reset(merged, { keepDefaultValues: true });
     },
@@ -122,7 +126,7 @@ export function useRebasingForm<T extends FieldValues>({
     if (now.version === b.version) return;
     if (followServerWhenClean && !isDirty) {
       resetTo(now);
-    } else if (waiting.current) {
+    } else if (waiting.current && now.version !== skipVersion.current) {
       rebase(now, b.initial);
     }
   }, [version, isDirty, followServerWhenClean, resetTo, rebase]);
@@ -134,8 +138,19 @@ export function useRebasingForm<T extends FieldValues>({
       rebase(now, b.initial);
     } else {
       waiting.current = true;
+      skipVersion.current = null;
     }
   }, [rebase]);
+
+  /**
+   * The user's own write elsewhere (a bulk move) bumped the version: rebase onto the next
+   * server version, keeping the edits, with no dialog. A version already cached now predates
+   * that write and is someone else's, so it is not adopted.
+   */
+  const rebaseOnNextVersion = useCallback(() => {
+    waiting.current = true;
+    skipVersion.current = latest.current.server?.version ?? null;
+  }, []);
 
   const rebaseFromSent = useCallback(
     (next: { values: T; version: number }, sent: T) => {
@@ -157,5 +172,5 @@ export function useRebasingForm<T extends FieldValues>({
     [],
   );
 
-  return { baseline, onConflict, rebaseFromSent, resetTo };
+  return { baseline, onConflict, rebaseFromSent, rebaseOnNextVersion, resetTo };
 }

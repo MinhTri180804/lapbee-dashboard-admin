@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Images, Upload } from 'lucide-react';
-import { ProblemError } from '@/shared/api/errors';
 import { useCan } from '@/shared/auth/permissions';
 import { Button, Dialog, Spinner, TextField } from '@/shared/ui';
 import { useFolders } from '../hooks/use-folders';
 import { useMediaList } from '../hooks/use-media-list';
 import { FolderTree } from './FolderTree';
 import { useUploadMedia } from '../hooks/use-upload-media';
-import { toMediaThumb, uploadErrorMessage, type MediaThumb } from '../model/adapters';
+import { toMediaThumb, uploadErrorText, type MediaThumb } from '../model/adapters';
 import styles from './MediaPicker.module.css';
 
 export type MediaPickerProps = {
@@ -54,6 +53,12 @@ export function MediaPicker({ open, onClose, onPick, title = 'Chọn ảnh' }: M
   const list = useMediaList({ folder: activeFolder, q, used: null }, open && canRead);
   const upload = useUploadMedia();
   const items = list.data?.pages.flatMap((p) => p.items) ?? [];
+  // The library page's copy for each state.
+  const emptyText = q
+    ? 'Không tìm thấy ảnh nào.'
+    : activeFolder
+      ? 'Thư mục này chưa có ảnh.'
+      : 'Chưa có ảnh nào.';
 
   function pick(thumb: MediaThumb) {
     setSelectedId(thumb.id);
@@ -70,7 +75,7 @@ export function MediaPicker({ open, onClose, onPick, title = 'Chọn ảnh' }: M
           pick(toMediaThumb(created));
         },
         onError: (e) => {
-          setUploadError(uploadErrorMessage(e instanceof ProblemError ? e.code : undefined));
+          setUploadError(uploadErrorText(e));
         },
       },
     );
@@ -90,6 +95,7 @@ export function MediaPicker({ open, onClose, onPick, title = 'Chọn ảnh' }: M
               onClick={() => {
                 setFolder(null);
                 setSearch('');
+                setQ('');
               }}
             >
               <Images size={16} aria-hidden="true" />
@@ -102,6 +108,7 @@ export function MediaPicker({ open, onClose, onPick, title = 'Chọn ảnh' }: M
               onSelect={(id) => {
                 setFolder(id);
                 setSearch('');
+                setQ('');
               }}
             />
           </nav>
@@ -141,7 +148,7 @@ export function MediaPicker({ open, onClose, onPick, title = 'Chọn ảnh' }: M
             )}
             {list.isPending && <Spinner />}
             {list.isError && <p className={styles.error}>Không tải được thư viện ảnh.</p>}
-            {list.isSuccess && items.length === 0 && <p>Chưa có ảnh nào.</p>}
+            {list.isSuccess && items.length === 0 && <p>{emptyText}</p>}
             <ul className={styles.grid}>
               {items.map((item) => (
                 <li key={item.id}>

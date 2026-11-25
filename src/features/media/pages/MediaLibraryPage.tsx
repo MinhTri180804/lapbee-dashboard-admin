@@ -55,6 +55,8 @@ export function MediaLibraryPage() {
 
   const [checked, setChecked] = useState<ReadonlySet<string>>(() => new Set());
   const [moving, setMoving] = useState(false);
+  /** Bumped when our own bulk move included the open image (its version moved). */
+  const [ownMoves, setOwnMoves] = useState(0);
   // Only images still in the loaded list count: one deleted or moved away is dropped.
   const selection = useMemo(
     () => new Set(items.filter((m) => checked.has(m.id)).map((m) => m.id)),
@@ -79,10 +81,12 @@ export function MediaLibraryPage() {
   };
 
   const moveChecked = (target: string | null) => {
+    const ids = Array.from(selection);
     move.mutate(
-      { ids: Array.from(selection), folderId: target },
+      { ids, folderId: target },
       {
         onSuccess: ({ moved }) => {
+          if (openId && ids.includes(openId)) setOwnMoves((n) => n + 1);
           toast.show({ kind: 'success', title: `Đã chuyển ${String(moved)} ảnh` });
           setChecked(new Set());
           setMoving(false);
@@ -336,7 +340,9 @@ export function MediaLibraryPage() {
           )}
         </section>
 
-        {openId && <MediaDetailPanel key={openId} id={openId} onClose={close} />}
+        {openId && (
+          <MediaDetailPanel key={openId} id={openId} ownMoves={ownMoves} onClose={close} />
+        )}
       </div>
 
       <MoveDialog

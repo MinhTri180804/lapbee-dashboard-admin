@@ -195,6 +195,46 @@ describe('MediaDetailPanel', () => {
     expect(bodies[1]).toEqual({ version: 4, name: 'khoa.jpg' });
   });
 
+  it('a bulk move that includes the open image adopts its new version without a conflict', async () => {
+    const user = userEvent.setup();
+    let current = mediaDetail(1);
+    const gets = serve(() => current);
+    server.use(
+      mock.post(`${BASE}/media/move`, () => {
+        // moveMany bumps the version of every moved image.
+        current = mediaDetail(1, { folderId: FOLDER.cleanRoom, version: 4 });
+        return HttpResponse.json({ moved: 2 });
+      }),
+    );
+    const bodies = servePatch((_n, body) =>
+      body.version === 4
+        ? ok(mediaDetail(1, { folderId: FOLDER.cleanRoom, alt: String(body.alt), version: 5 }))
+        : problem(409, 'VERSION_CONFLICT'),
+    );
+    renderPanel();
+    const alt = await screen.findByLabelText('Văn bản thay thế');
+    await user.clear(alt);
+    await user.type(alt, 'Chân dung Minh Khoa');
+
+    await user.click(screen.getByRole('checkbox', { name: 'Chọn anh-1.jpg' }));
+    await user.click(screen.getByRole('checkbox', { name: 'Chọn anh-2.jpg' }));
+    await user.click(screen.getByRole('button', { name: 'Chuyển tới…' }));
+    const dialog = screen.getByRole('dialog', { name: 'Chuyển 2 ảnh tới' });
+    await user.click(within(dialog).getByRole('radio', { name: /^Phòng sạch/ }));
+    await user.click(within(dialog).getByRole('button', { name: 'Chuyển' }));
+    expect(await screen.findByText('Đã chuyển 2 ảnh')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByLabelText('Thư mục')).toHaveDisplayValue('Hành trình / 2024 / Phòng sạch');
+    });
+    expect(gets.length).toBeGreaterThan(1);
+    expect(screen.getByLabelText('Văn bản thay thế')).toHaveValue('Chân dung Minh Khoa');
+
+    await user.click(screen.getByRole('button', { name: 'Lưu thay đổi' }));
+    expect(await screen.findByText('Đã lưu ảnh')).toBeInTheDocument();
+    expect(bodies).toEqual([{ version: 4, alt: 'Chân dung Minh Khoa' }]);
+    expect(screen.queryByRole('dialog', { name: 'Dữ liệu đã thay đổi ở nơi khác' })).toBeNull();
+  });
+
   it('moves the image to the library root with folderId null', async () => {
     const user = userEvent.setup();
     serve();

@@ -202,6 +202,93 @@ describe('MediaPicker', () => {
     });
   });
 
+  it('a folder click during a search drops q at once: uploads go to that folder', async () => {
+    const urls: URL[] = [];
+    let uploadFolder: FormDataEntryValue | null = null;
+    server.use(
+      mock.get(`${BASE}/media`, ({ request }) => {
+        urls.push(new URL(request.url));
+        return HttpResponse.json(mediaListFixture);
+      }),
+      mock.post(`${BASE}/media`, async ({ request }) => {
+        uploadFolder = (await request.formData()).get('folderId');
+        return HttpResponse.json(mediaItem(99), { status: 201 });
+      }),
+    );
+    const user = userEvent.setup();
+    const { onPick } = setup(UPLOAD);
+    await screen.findByAltText('anh-1.jpg');
+    await user.type(screen.getByLabelText('Tìm trong thư viện'), 'mac');
+    await waitFor(() => {
+      expect(urls.at(-1)?.searchParams.get('q')).toBe('mac');
+    });
+    await user.click(screen.getByRole('button', { name: 'Đội ngũ' }));
+    // Within the 300 ms debounce: the folder already counts.
+    await user.upload(
+      screen.getByLabelText('Tải ảnh lên'),
+      new File(['x'], 'moi.png', { type: 'image/png' }),
+    );
+    await waitFor(() => {
+      expect(onPick).toHaveBeenCalled();
+    });
+    expect(uploadFolder).toBe(FOLDER.team);
+  });
+
+  it('"Tất cả ảnh" during a search shows every image at once', async () => {
+    server.use(
+      mock.get(`${BASE}/media`, ({ request }) =>
+        new URL(request.url).searchParams.get('q')
+          ? HttpResponse.json({ items: [], total: 0, page: 1, perPage: 40 })
+          : HttpResponse.json(mediaListFixture),
+      ),
+    );
+    const user = userEvent.setup();
+    setup(READ);
+    await screen.findByAltText('anh-1.jpg');
+    await user.type(screen.getByLabelText('Tìm trong thư viện'), 'mac');
+    expect(await screen.findByText('Không tìm thấy ảnh nào.')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Tất cả ảnh' }));
+    expect(screen.getByLabelText('Tìm trong thư viện')).toHaveValue('');
+    // Not after the debounce: the cached full list shows straight away.
+    expect(screen.getByAltText('anh-1.jpg')).toBeInTheDocument();
+  });
+
+  it.each([
+    ['all', 'Chưa có ảnh nào.'],
+    ['folder', 'Thư mục này chưa có ảnh.'],
+    ['search', 'Không tìm thấy ảnh nào.'],
+  ])('says the %s list is empty with its own copy', async (state, copy) => {
+    server.use(
+      mock.get(`${BASE}/media`, () =>
+        HttpResponse.json({ items: [], total: 0, page: 1, perPage: 40 }),
+      ),
+    );
+    const user = userEvent.setup();
+    setup(READ);
+    expect(await screen.findByText('Chưa có ảnh nào.')).toBeInTheDocument();
+    if (state === 'folder') {
+      await user.click(await screen.findByRole('button', { name: 'Đội ngũ' }));
+    } else if (state === 'search') {
+      await user.type(screen.getByLabelText('Tìm trong thư viện'), 'mac');
+    }
+    expect(await screen.findByText(copy)).toBeInTheDocument();
+  });
+
+  it('shows the general copy for an upload error that is not a MEDIA_* code', async () => {
+    server.use(
+      mock.get(`${BASE}/media`, () => HttpResponse.json(mediaListFixture)),
+      mock.post(`${BASE}/media`, () => problem(429, 'RATE_LIMITED')),
+    );
+    const user = userEvent.setup();
+    setup(UPLOAD);
+    await screen.findByAltText('anh-1.jpg');
+    await user.upload(
+      screen.getByLabelText('Tải ảnh lên'),
+      new File(['x'], 'a.png', { type: 'image/png' }),
+    );
+    expect(await screen.findByRole('alert')).toHaveTextContent('Thử lại sau ít phút.');
+  });
+
   it('resets search and folder when closed and reopened', async () => {
     server.use(mock.get(`${BASE}/media`, () => HttpResponse.json(mediaListFixture)));
     const user = userEvent.setup();

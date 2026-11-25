@@ -1,3 +1,5 @@
+import { ProblemError } from '@/shared/api/errors';
+import { messageFor } from '@/shared/form/error-messages';
 import { formatDate } from '@/shared/lib/format-date';
 import type { MediaDetailDto, MediaDto } from '../api/repo';
 
@@ -48,6 +50,14 @@ const UPLOAD_ERRORS: Record<string, string> = {
 
 export function uploadErrorMessage(code: string | undefined): string {
   return (code && UPLOAD_ERRORS[code]) || 'Không tải được ảnh. Thử lại sau.';
+}
+
+/** The text for a failed upload: MEDIA_* codes have their own copy, the rest the global table. */
+export function uploadErrorText(error: unknown): string {
+  if (error instanceof ProblemError && error.code.startsWith('MEDIA_')) {
+    return uploadErrorMessage(error.code);
+  }
+  return messageFor(error);
 }
 
 const FOLDER_ERRORS: Record<string, string> = {
