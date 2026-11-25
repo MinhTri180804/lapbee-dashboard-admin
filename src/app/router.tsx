@@ -4,6 +4,7 @@ import type { Permission } from '@/shared/api/generated/permissions';
 import { RequireAuth, RequirePermission, type PermissionMode } from '@/shared/auth/permissions';
 import { useSession } from '@/shared/auth/session-store';
 import { AccountPage, LoginPage, SetupPasswordPage } from '@/features/auth';
+import { MediaLibraryPage } from '@/features/media';
 import { isItemKind, SiteHistoryPage, SiteItemPage, SitePage } from '@/features/site';
 import { Shell } from './layout/Shell';
 import { firstAllowedPath } from './nav';
@@ -62,10 +63,7 @@ export const routes: RouteObject[] = [
             path: '/categories',
             element: guarded('category.read', <ComingSoonPage title="Chuyên mục" />),
           },
-          {
-            path: '/media',
-            element: guarded('media.read', <ComingSoonPage title="Thư viện ảnh" />),
-          },
+          { path: '/media', element: guarded('media.read', <MediaLibraryPage />) },
           { path: '/users', element: guarded('user.read', <ComingSoonPage title="Người dùng" />) },
           { path: '/roles', element: guarded('role.read', <ComingSoonPage title="Vai trò" />) },
           {

@@ -1,6 +1,8 @@
 import { formatDate } from '@/shared/lib/format-date';
 import type { MediaDto } from '../api/repo';
 
+export type { MediaDto };
+
 export type MediaThumb = {
   id: string;
   url: string;
