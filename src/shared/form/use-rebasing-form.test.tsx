@@ -219,4 +219,22 @@ describe('useRebasingForm', () => {
     expect(result.current.form.getValues()).toEqual(serverChange('new@lapbee.test'));
     expect(result.current.form.formState.isDirty).toBe(false);
   });
+
+  it('resetTo and rebaseFromSent keep their own copy of the values passed in', () => {
+    const { result } = setup();
+    const next = serverChange('new@lapbee.test');
+    act(() => {
+      result.current.resetTo({ values: next, version: 9 });
+    });
+    next.email = 'mutated@lapbee.test';
+    expect(result.current.baseline.initial.email).toBe('new@lapbee.test');
+
+    const sent = structuredClone(result.current.form.getValues());
+    const after = serverChange('after@lapbee.test');
+    act(() => {
+      result.current.rebaseFromSent({ values: after, version: 10 }, sent);
+    });
+    after.email = 'mutated@lapbee.test';
+    expect(result.current.baseline.initial.email).toBe('after@lapbee.test');
+  });
 });

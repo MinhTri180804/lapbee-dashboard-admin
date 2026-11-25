@@ -225,6 +225,34 @@ describe('MediaLibraryPage', () => {
     );
   });
 
+  it('drops the open image when the folder, view or search changes', async () => {
+    const user = userEvent.setup();
+    serveLibrary();
+    const id = mediaItem(2).id;
+    server.use(
+      mock.get(`${BASE}/media/${id}`, () => HttpResponse.json({ ...mediaItem(2), usages: [] })),
+    );
+    const { router } = renderPage(`/media?id=${id}`);
+    // A deep link opens the panel.
+    expect(await screen.findByRole('complementary', { name: 'Chi tiết ảnh' })).toBeInTheDocument();
+
+    await user.click(await screen.findByRole('button', { name: /^2024/ }));
+    expect(router.state.location.search).toBe(`?folder=${FOLDER.y2024}`);
+    await waitFor(() => {
+      expect(screen.queryByRole('complementary', { name: 'Chi tiết ảnh' })).not.toBeInTheDocument();
+    });
+
+    await router.navigate(`/media?folder=${FOLDER.y2024}&id=${id}`);
+    await user.click(screen.getByRole('button', { name: /^Chưa dùng/ }));
+    expect(router.state.location.search).toBe('?view=unused');
+
+    await router.navigate(`/media?view=unused&id=${id}`);
+    await user.type(screen.getByRole('searchbox', { name: 'Tìm trong thư viện' }), 'chan');
+    await waitFor(() => {
+      expect(router.state.location.search).toBe('?q=chan');
+    });
+  });
+
   it('disables upload without media.upload', async () => {
     serveLibrary();
     renderPage('/media', ['media.read']);

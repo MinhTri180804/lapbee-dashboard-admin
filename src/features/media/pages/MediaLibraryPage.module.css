@@ -6,12 +6,15 @@
   align-items: center;
   gap: var(--space-4);
 }
-/* The detail panel (Task 5) adds a third column. */
 .layout {
   display: grid;
   grid-template-columns: 248px minmax(0, 1fr);
   gap: var(--space-8);
   align-items: start;
+}
+/* The open image is a third column on wide screens (a dialog below 1200px). */
+.layout[data-panel='true'] {
+  grid-template-columns: 248px minmax(0, 1fr) 340px;
 }
 .side {
   display: flex;

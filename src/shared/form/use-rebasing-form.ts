@@ -82,7 +82,7 @@ export function useRebasingForm<T extends FieldValues>({
 
   const resetTo = useCallback(
     (next: { values: T; version: number }) => {
-      baselineRef.current = { initial: next.values, version: next.version };
+      baselineRef.current = { initial: structuredClone(next.values), version: next.version };
       waiting.current = false;
       form.reset(next.values);
     },
@@ -98,7 +98,7 @@ export function useRebasingForm<T extends FieldValues>({
   const rebase = useCallback(
     (next: { values: T; version: number }, since: T) => {
       const merged = keepEdits(next.values, since, form.getValues());
-      baselineRef.current = { initial: next.values, version: next.version };
+      baselineRef.current = { initial: structuredClone(next.values), version: next.version };
       waiting.current = false;
       form.reset(next.values);
       form.reset(merged, { keepDefaultValues: true });

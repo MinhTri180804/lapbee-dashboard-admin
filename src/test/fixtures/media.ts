@@ -77,3 +77,27 @@ export const FOLDER = {
 } as const;
 
 export const foldersFixture = { items: folderFixtures } satisfies FolderList;
+
+type MediaDetail = Res<'/admin/v1/media/{id}', 'get', 200>;
+
+/** Detail of `mediaItem(n)` after the design: 800 × 1000 JPG, 214 KB, version 3, no usages. */
+export function mediaDetail(n: number, overrides: Partial<MediaDetail> = {}): MediaDetail {
+  return {
+    ...mediaItem(n),
+    alt: 'Nguyễn Minh Khoa, nhà sáng lập LAPBEE',
+    width: 800,
+    height: 1000,
+    bytes: 214 * 1024,
+    createdAt: '2026-03-02T03:00:00Z',
+    updatedAt: '2026-03-02T03:00:00Z',
+    folderId: FOLDER.y2024,
+    version: 3,
+    usages: [],
+    ...overrides,
+  } satisfies MediaDetail;
+}
+
+/** An image used by a team member: it cannot be deleted. */
+export const usedMediaDetail = mediaDetail(1, {
+  usages: [{ source: 'site', kind: 'team_member', id: 'team-1', label: 'Nguyễn Minh Khoa' }],
+});

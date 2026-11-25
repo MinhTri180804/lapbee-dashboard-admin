@@ -1,7 +1,7 @@
 import { formatDate } from '@/shared/lib/format-date';
-import type { MediaDto } from '../api/repo';
+import type { MediaDetailDto, MediaDto } from '../api/repo';
 
-export type { MediaDto };
+export type { MediaDetailDto, MediaDto };
 
 export type MediaThumb = {
   id: string;

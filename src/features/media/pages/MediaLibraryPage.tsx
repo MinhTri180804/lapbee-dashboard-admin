@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router';
 import { useCan } from '@/shared/auth/permissions';
 import { Button, PageHeader, Spinner } from '@/shared/ui';
 import { FolderTree } from '../components/FolderTree';
+import { MediaDetailPanel, useNarrowPanel } from '../components/MediaDetailPanel';
 import { MediaGrid } from '../components/MediaGrid';
 import { UploadQueue } from '../components/UploadQueue';
 import { useFolders } from '../hooks/use-folders';
@@ -35,6 +36,7 @@ export function MediaLibraryPage() {
   const [sp, setSp] = useSearchParams();
   const params = paramsFrom(sp);
   const openId = sp.get('id');
+  const narrow = useNarrowPanel();
 
   const total = useMediaTotal();
   const unusedTotal = useMediaTotal(false);
@@ -52,7 +54,10 @@ export function MediaLibraryPage() {
     if (search.trim() !== params.q) setSearch(params.q);
   }
 
-  /** Writes the screen's own keys and keeps every other parameter. */
+  /**
+   * Writes the screen's own keys and keeps every other parameter. A new folder, view or search
+   * closes the open image: it may not be in the new list.
+   */
   const navigate = (keys: { folder?: string; view?: string; q?: string }, replace = false) => {
     setSp(
       (prev) => {
@@ -62,6 +67,7 @@ export function MediaLibraryPage() {
           if (value) next.set(key, value);
           else next.delete(key);
         }
+        next.delete('id');
         return next;
       },
       { replace },
@@ -91,6 +97,14 @@ export function MediaLibraryPage() {
     setSp((prev) => {
       const next = new URLSearchParams(prev);
       next.set('id', id);
+      return next;
+    });
+  };
+
+  const close = () => {
+    setSp((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete('id');
       return next;
     });
   };
@@ -160,7 +174,7 @@ export function MediaLibraryPage() {
         }
       />
 
-      <div className={styles.layout}>
+      <div className={styles.layout} data-panel={(openId && !narrow) || undefined}>
         <nav className={styles.side} aria-label="Thư mục ảnh">
           <ul className={styles.views}>
             <li>
@@ -253,6 +267,8 @@ export function MediaLibraryPage() {
             />
           )}
         </section>
+
+        {openId && <MediaDetailPanel key={openId} id={openId} onClose={close} />}
       </div>
 
       <UploadQueue items={queue.items} busy={queue.busy} onClose={queue.clearFinished} />
