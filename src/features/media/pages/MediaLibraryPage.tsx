@@ -46,9 +46,10 @@ export function MediaLibraryPage() {
   const [search, setSearch] = useState(params.q);
   const [shownQ, setShownQ] = useState(params.q);
   if (shownQ !== params.q) {
-    // The URL changed under the box (a folder click, Back): follow it.
+    // The URL changed under the box (a folder click, Back): follow it. Our own debounced write
+    // matches the trimmed box, so the box keeps what the user typed (a trailing space).
     setShownQ(params.q);
-    setSearch(params.q);
+    if (search.trim() !== params.q) setSearch(params.q);
   }
 
   /** Writes the screen's own keys and keeps every other parameter. */
@@ -71,7 +72,8 @@ export function MediaLibraryPage() {
     const term = search.trim();
     if (term === params.q) return;
     const t = setTimeout(() => {
-      navigate(term ? { q: term } : {}, true);
+      // Entering a search pushes (Back returns to the folder); refining one replaces.
+      navigate(term ? { q: term } : {}, params.q !== '');
     }, DEBOUNCE_MS);
     return () => {
       clearTimeout(t);

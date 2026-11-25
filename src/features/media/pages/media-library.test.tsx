@@ -133,6 +133,37 @@ describe('MediaLibraryPage', () => {
     expect(router.state.location.search).toBe('');
   });
 
+  it('keeps a trailing space in the box after the debounced search', async () => {
+    const user = userEvent.setup();
+    serveLibrary();
+    const { router } = renderPage();
+    const box = screen.getByRole('searchbox', { name: 'Tìm trong thư viện' });
+    await user.type(box, 'chan ');
+    await waitFor(() => {
+      expect(new URLSearchParams(router.state.location.search).get('q')).toBe('chan');
+    });
+    await screen.findByRole('heading', { level: 2, name: 'Kết quả tìm kiếm' });
+    expect(box).toHaveValue('chan ');
+    await user.type(box, 'dung');
+    await waitFor(() => {
+      expect(new URLSearchParams(router.state.location.search).get('q')).toBe('chan dung');
+    });
+  });
+
+  it('goes Back from search results to the folder it started in', async () => {
+    const user = userEvent.setup();
+    serveLibrary();
+    const { router } = renderPage(`/media?folder=${FOLDER.y2024}`);
+    await user.type(screen.getByRole('searchbox', { name: 'Tìm trong thư viện' }), 'chan');
+    await waitFor(() => {
+      expect(new URLSearchParams(router.state.location.search).get('q')).toBe('chan');
+    });
+    await router.navigate(-1);
+    expect(router.state.location.search).toBe(`?folder=${FOLDER.y2024}`);
+    expect(await screen.findByRole('heading', { level: 2, name: '2024' })).toBeInTheDocument();
+    expect(screen.getByRole('searchbox', { name: 'Tìm trong thư viện' })).toHaveValue('');
+  });
+
   it('collapses and expands a folder with children', async () => {
     const user = userEvent.setup();
     serveLibrary();
