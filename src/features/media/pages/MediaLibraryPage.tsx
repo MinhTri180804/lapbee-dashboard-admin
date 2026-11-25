@@ -1,8 +1,9 @@
-import { CircleDashed, FolderPlus, Images, Search, Upload } from 'lucide-react';
+import { CircleDashed, Images, Search, Upload } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { useCan } from '@/shared/auth/permissions';
 import { Button, PageHeader, Spinner, useToast } from '@/shared/ui';
+import { FolderActions } from '../components/FolderActions';
 import { FolderTree } from '../components/FolderTree';
 import { MediaDetailPanel, useNarrowPanel } from '../components/MediaDetailPanel';
 import { MediaGrid } from '../components/MediaGrid';
@@ -272,9 +273,15 @@ export function MediaLibraryPage() {
               {listTotal !== undefined && <span className="lb-label">{listTotal} ảnh</span>}
             </div>
             <div className={styles.tools}>
-              <Button variant="ghost" icon={FolderPlus} disabled title="Sắp có">
-                Thư mục mới
-              </Button>
+              <FolderActions
+                tree={tree}
+                folder={
+                  view === 'folder' && params.folder ? findFolder(tree, params.folder) : undefined
+                }
+                onSelect={(id) => {
+                  go(id ? { folder: id } : {});
+                }}
+              />
               <label className={styles.search}>
                 <Search size={16} aria-hidden="true" />
                 <input

@@ -86,7 +86,7 @@ describe('MediaLibraryPage', () => {
     expect(screen.getByRole('img', { name: 'anh-1.jpg' })).toBeInTheDocument();
     expect(screen.getAllByText('1200 × 800')).toHaveLength(3);
     expect(screen.queryByRole('button', { name: 'Tải thêm' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Thư mục mới' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Thư mục mới' })).toBeEnabled();
 
     const sp = last(lists);
     expect(sp.has('folderId')).toBe(false);
