@@ -15,3 +15,5 @@ Những chỗ dashboard cần mà `openapi.json` v1.4.0 chưa có. Dashboard **k
 | 9 | Kiểu cho `content` trong OpenAPI (discriminated union theo `type`) | FE sinh kiểu khối thay vì gõ tay | Gõ tay theo README và `block-handlers.ts` |
 | 10 | Spec §8.5 và §17 cập nhật: 10 khối, `checklist`, route `/media/editorjs` | Spec lệch README và code | Theo README và OpenAPI |
 | 11 | Schema của `GET /public/v1/posts/{slug}` dùng `$defs` (mục danh sách đệ quy) mà openapi-typescript không resolve được; nên đặt dưới `components.schemas` (ví dụ schema đệ quy có tên) | Sinh kiểu không cần xử lý đặc biệt | `scripts/gen-api.mjs` hoist `$defs` trong bộ nhớ trước khi sinh kiểu |
+| 12 | `POST /media/delete` (xoá nhiều ảnh) | Dọn thư viện nhanh; hiện chỉ chuyển nhiều ảnh được (`POST /media/move`) | Chỉ xoá từng ảnh ở panel chi tiết |
+| 13 | `GET /media` có tuỳ chọn trả tổng dung lượng và số ảnh theo từng thư mục con (không chỉ trực tiếp) | FE đang tự cộng `mediaCount` cho cây thư mục | FE cộng dồn từ danh sách phẳng |
