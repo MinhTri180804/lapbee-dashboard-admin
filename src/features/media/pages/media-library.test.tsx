@@ -159,7 +159,9 @@ describe('MediaLibraryPage', () => {
       expect(new URLSearchParams(router.state.location.search).get('q')).toBe('chan');
     });
     await router.navigate(-1);
-    expect(router.state.location.search).toBe(`?folder=${FOLDER.y2024}`);
+    await waitFor(() => {
+      expect(router.state.location.search).toBe(`?folder=${FOLDER.y2024}`);
+    });
     expect(await screen.findByRole('heading', { level: 2, name: '2024' })).toBeInTheDocument();
     expect(screen.getByRole('searchbox', { name: 'Tìm trong thư viện' })).toHaveValue('');
   });
