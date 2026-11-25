@@ -1,5 +1,5 @@
 import { CircleDashed, FolderPlus, Images, Search, Upload } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { useCan } from '@/shared/auth/permissions';
 import { Button, PageHeader, Spinner, useToast } from '@/shared/ui';
@@ -47,12 +47,18 @@ export function MediaLibraryPage() {
   const unusedTotal = useMediaTotal(false);
   const { tree } = useFolders();
   const list = useMediaList(params);
+  const items = useMemo(() => list.data?.pages.flatMap((p) => p.items) ?? [], [list.data]);
   const queue = useUploadQueue();
   const fileInput = useRef<HTMLInputElement>(null);
   const move = useMoveMedia();
 
   const [checked, setChecked] = useState<ReadonlySet<string>>(() => new Set());
   const [moving, setMoving] = useState(false);
+  // Only images still in the loaded list count: one deleted or moved away is dropped.
+  const selection = useMemo(
+    () => new Set(items.filter((m) => checked.has(m.id)).map((m) => m.id)),
+    [items, checked],
+  );
   // A new folder, view or search starts with nothing checked.
   const scope = `${params.folder ?? ''}|${String(params.used)}|${params.q}`;
   const [shownScope, setShownScope] = useState(scope);
@@ -63,8 +69,8 @@ export function MediaLibraryPage() {
   }
 
   const toggleCheck = (id: string) => {
-    setChecked((prev) => {
-      const next = new Set(prev);
+    setChecked(() => {
+      const next = new Set(selection);
       if (next.has(id)) next.delete(id);
       else if (next.size < MAX_SELECTION) next.add(id);
       return next;
@@ -73,7 +79,7 @@ export function MediaLibraryPage() {
 
   const moveChecked = (target: string | null) => {
     move.mutate(
-      { ids: Array.from(checked), folderId: target },
+      { ids: Array.from(selection), folderId: target },
       {
         onSuccess: ({ moved }) => {
           toast.show({ kind: 'success', title: `Đã chuyển ${String(moved)} ảnh` });
@@ -174,7 +180,6 @@ export function MediaLibraryPage() {
     search: 'Không tìm thấy ảnh nào.',
   }[view];
 
-  const items = list.data?.pages.flatMap((p) => p.items) ?? [];
   const listTotal = list.data?.pages[0]?.total;
 
   return (
@@ -286,9 +291,9 @@ export function MediaLibraryPage() {
             </div>
           </div>
 
-          {checked.size > 0 && (
+          {selection.size > 0 && (
             <SelectionBar
-              count={checked.size}
+              count={selection.size}
               canMove={canMove}
               onMove={() => {
                 setMoving(true);
@@ -316,10 +321,10 @@ export function MediaLibraryPage() {
               hasMore={list.hasNextPage}
               loadingMore={list.isFetchingNextPage}
               onLoadMore={() => void list.fetchNextPage()}
-              checked={checked}
+              checked={selection}
               onToggleCheck={toggleCheck}
               checkable
-              checkFull={checked.size >= MAX_SELECTION}
+              checkFull={selection.size >= MAX_SELECTION}
             />
           )}
         </section>
@@ -329,13 +334,16 @@ export function MediaLibraryPage() {
 
       <MoveDialog
         open={moving}
-        title={`Chuyển ${String(checked.size)} ảnh tới`}
+        title={`Chuyển ${String(selection.size)} ảnh tới`}
         tree={tree}
         movingFolderId={null}
-        currentFolderId={params.folder && params.folder !== 'root' ? params.folder : null}
+        currentFolderId={
+          params.folder ? (params.folder === 'root' ? null : params.folder) : undefined
+        }
         onClose={() => {
           setMoving(false);
         }}
+        busy={move.isPending}
         onConfirm={moveChecked}
       />
 

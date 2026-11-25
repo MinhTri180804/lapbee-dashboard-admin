@@ -1,10 +1,12 @@
-import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http as mock, HttpResponse } from 'msw';
 import { describe, expect, it, vi } from 'vitest';
 import { FOLDER, foldersFixture, mediaItem } from '@/test/fixtures/media';
 import { server } from '@/test/msw/server';
 import { renderWithProviders } from '@/test/render';
+import { createQueryClient } from '@/app/query-client';
+import { mediaKeys } from '../model/adapters';
 import { buildFolderTree } from '../model/folder-tree';
 import { MediaLibraryPage } from '../pages/MediaLibraryPage';
 import { MoveDialog } from './MoveDialog';
@@ -13,6 +15,7 @@ const BASE = 'http://localhost/admin/v1';
 
 function serveLibrary(count = 3) {
   let lists = 0;
+  let ids = Array.from({ length: count }, (_, i) => i + 1);
   server.use(
     mock.get(`${BASE}/media/folders`, () => HttpResponse.json(foldersFixture)),
     mock.get(`${BASE}/media`, ({ request }) => {
@@ -22,14 +25,19 @@ function serveLibrary(count = 3) {
       }
       lists += 1;
       return HttpResponse.json({
-        items: Array.from({ length: count }, (_, i) => mediaItem(i + 1)),
-        total: count,
+        items: ids.map((n) => mediaItem(n)),
+        total: ids.length,
         page: 1,
         perPage: 40,
       });
     }),
   );
-  return { lists: () => lists };
+  return {
+    lists: () => lists,
+    show: (...next: number[]) => {
+      ids = next;
+    },
+  };
 }
 
 function serveMove(moved = 2) {
@@ -130,14 +138,78 @@ describe('multi-select and move', () => {
     serveLibrary(101);
     renderPage();
     await screen.findByRole('checkbox', { name: 'Chọn anh-1.jpg' });
-    for (let n = 1; n <= 100; n += 1) {
-      fireEvent.click(screen.getByRole('checkbox', { name: `Chọn anh-${String(n)}.jpg` }));
-    }
+    const boxes = screen.getAllByRole('checkbox');
+    for (const box of boxes.slice(0, 100)) fireEvent.click(box);
     expect(screen.getByText('100 ảnh đã chọn')).toBeInTheDocument();
     expect(screen.getByText('Chọn tối đa 100 ảnh một lần.')).toBeInTheDocument();
     expect(screen.getByRole('checkbox', { name: 'Chọn anh-101.jpg' })).toBeDisabled();
     expect(screen.getByRole('checkbox', { name: 'Chọn anh-1.jpg' })).toBeEnabled();
-  }, 30_000);
+  });
+
+  it('drops a checked image that left the list from the count and the request', async () => {
+    const user = userEvent.setup();
+    const lib = serveLibrary();
+    const bodies = serveMove(1);
+    const queryClient = createQueryClient();
+    renderWithProviders(<MediaLibraryPage />, {
+      route: '/media',
+      session: { permissions: ['*'] },
+      queryClient,
+    });
+    await checkTwo(user);
+    expect(screen.getByText('2 ảnh đã chọn')).toBeInTheDocument();
+    lib.show(2, 3);
+    await act(async () => {
+      await queryClient.invalidateQueries({ queryKey: mediaKeys.all });
+    });
+    expect(await screen.findByText('1 ảnh đã chọn')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Chuyển tới…' }));
+    const dialog = screen.getByRole('dialog', { name: 'Chuyển 1 ảnh tới' });
+    await user.click(within(dialog).getByRole('radio', { name: /^Gốc thư viện/ }));
+    await user.click(within(dialog).getByRole('button', { name: 'Chuyển' }));
+    await screen.findByText('Đã chuyển 1 ảnh');
+    expect(bodies).toEqual([{ ids: [mediaItem(2).id], folderId: null }]);
+  });
+
+  it('sends one request on a double click of "Chuyển"', async () => {
+    const user = userEvent.setup();
+    serveLibrary();
+    let posts = 0;
+    server.use(
+      mock.post(`${BASE}/media/move`, async () => {
+        posts += 1;
+        await new Promise((r) => setTimeout(r, 100));
+        return HttpResponse.json({ moved: 2 });
+      }),
+    );
+    renderPage();
+    await checkTwo(user);
+    await user.click(screen.getByRole('button', { name: 'Chuyển tới…' }));
+    const dialog = screen.getByRole('dialog', { name: 'Chuyển 2 ảnh tới' });
+    await user.click(within(dialog).getByRole('radio', { name: /^Gốc thư viện/ }));
+    await user.dblClick(within(dialog).getByRole('button', { name: 'Chuyển' }));
+    await screen.findByText('Đã chuyển 2 ảnh');
+    expect(posts).toBe(1);
+  });
+
+  it('marks "Hiện tại" only for a real folder or the root, not in "Tất cả ảnh"', async () => {
+    const user = userEvent.setup();
+    serveLibrary();
+    const view = renderPage();
+    await checkTwo(user);
+    await user.click(screen.getByRole('button', { name: 'Chuyển tới…' }));
+    const all = screen.getByRole('dialog', { name: 'Chuyển 2 ảnh tới' });
+    expect(within(all).queryByText('Hiện tại')).not.toBeInTheDocument();
+    view.unmount();
+
+    renderPage('/media?folder=root');
+    await checkTwo(user);
+    await user.click(screen.getByRole('button', { name: 'Chuyển tới…' }));
+    const root = screen.getByRole('dialog', { name: 'Chuyển 2 ảnh tới' });
+    expect(
+      within(root).getByRole('radio', { name: /^Gốc thư viện.*Hiện tại/ }),
+    ).toBeInTheDocument();
+  });
 });
 
 describe('MoveDialog', () => {

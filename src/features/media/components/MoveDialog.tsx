@@ -10,9 +10,12 @@ export type MoveDialogProps = {
   /** The folder being moved; `null` when moving images (they may go anywhere). */
   movingFolderId: string | null;
   /** Where the thing is now (marked, never hidden for images). */
-  currentFolderId: string | null;
+  /** `undefined` marks nothing (the folder is not one place, e.g. "Tất cả ảnh"). */
+  currentFolderId: string | null | undefined;
   onClose: () => void;
   onConfirm: (target: string | null) => void;
+  /** A move is in flight: "Chuyển" is loading and off. */
+  busy?: boolean;
 };
 
 type Option = { id: string | null; name: string; parents: string; level: number };
@@ -47,6 +50,7 @@ export function MoveDialog({
   currentFolderId,
   onClose,
   onConfirm,
+  busy = false,
 }: MoveDialogProps) {
   const name = useId();
   const [target, setTarget] = useState<{ id: string | null } | null>(null);
@@ -71,7 +75,8 @@ export function MoveDialog({
           </Button>
           <Button
             variant="primary"
-            disabled={target === null}
+            loading={busy}
+            disabled={target === null || busy}
             onClick={() => {
               if (target) onConfirm(target.id);
             }}
@@ -101,7 +106,9 @@ export function MoveDialog({
               />
               <span className={styles.name}>{option.name}</span>
               {option.parents && <span className={styles.path}>{option.parents}</span>}
-              {option.id === currentFolderId && <span className={styles.path}>Hiện tại</span>}
+              {currentFolderId !== undefined && option.id === currentFolderId && (
+                <span className={styles.path}>Hiện tại</span>
+              )}
             </label>
           ))}
         </div>

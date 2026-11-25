@@ -75,3 +75,8 @@
 .check:disabled {
   cursor: not-allowed;
 }
+@media (hover: none) {
+  .check {
+    opacity: 1;
+  }
+}
