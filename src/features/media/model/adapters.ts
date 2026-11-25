@@ -77,12 +77,13 @@ export function formatBytes(n: number): string {
     value /= 1024;
     unit += 1;
   }
-  const text =
-    unit === 0
-      ? String(Math.round(value))
-      : value >= 100
-        ? String(Math.round(value))
-        : String(Math.round(value * 10) / 10);
+  let rounded = unit === 0 || value >= 100 ? Math.round(value) : Math.round(value * 10) / 10;
+  // 1048575 B is 1023.999 KB, which rounds to 1024: show it as 1 MB.
+  if (rounded >= 1024 && unit < units.length - 1) {
+    rounded = 1;
+    unit += 1;
+  }
+  const text = String(rounded);
   return `${text.replace('.', ',')} ${units[unit] ?? 'B'}`;
 }
 

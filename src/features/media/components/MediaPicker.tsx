@@ -34,7 +34,7 @@ export function MediaPicker({ open, onClose, onPick, title = 'Chọn ảnh' }: M
     };
   }, [search]);
 
-  const list = useMediaList(q, open && canRead);
+  const list = useMediaList({ folder: null, q, used: null }, open && canRead);
   const upload = useUploadMedia();
   const items = list.data?.pages.flatMap((p) => p.items) ?? [];
 

@@ -15,6 +15,14 @@ describe('formatBytes', () => {
     expect(formatBytes(512)).toBe('512 B');
     expect(formatBytes(2 * 1024 * 1024)).toBe('2 MB');
   });
+
+  it('steps up a unit when rounding reaches 1024', () => {
+    expect(formatBytes(1023)).toBe('1023 B');
+    expect(formatBytes(1024)).toBe('1 KB');
+    expect(formatBytes(1048575)).toBe('1 MB');
+    expect(formatBytes(1048576)).toBe('1 MB');
+    expect(formatBytes(10485760)).toBe('10 MB');
+  });
 });
 
 describe('formatMediaMeta', () => {
