@@ -12,7 +12,7 @@ export function useUploadMedia(): UseMutationResult<MediaDto, Error, File> {
   const queryClient = useQueryClient();
   return useMutation({
     meta: { handlesErrors: true },
-    mutationFn: (file: File) => mediaRepo.upload(file),
+    mutationFn: (file: File) => mediaRepo.upload(file, {}),
     onSuccess: (created) => {
       queryClient.setQueriesData<InfiniteData<MediaList, number>>(
         { queryKey: [...mediaKeys.all, 'list'] },

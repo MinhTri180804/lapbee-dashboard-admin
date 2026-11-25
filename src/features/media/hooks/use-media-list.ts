@@ -13,7 +13,7 @@ export function useMediaList(
   enabled: boolean,
 ): UseInfiniteQueryResult<InfiniteData<MediaList, number>> {
   return useInfiniteQuery({
-    queryKey: mediaKeys.list(q),
+    queryKey: mediaKeys.list({ folder: null, q, used: null }),
     enabled,
     initialPageParam: 1,
     queryFn: ({ pageParam }) =>
