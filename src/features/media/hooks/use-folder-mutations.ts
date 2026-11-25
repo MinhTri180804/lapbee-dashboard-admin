@@ -12,7 +12,9 @@ export function useCreateFolder(): UseMutationResult<FolderDto, Error, FolderCre
   return useMutation({
     meta: { invalidates: [mediaKeys.all], handlesErrors: true },
     mutationFn: (body: FolderCreateBody) => mediaRepo.folders.create(body),
-    onSuccess: () => qc.invalidateQueries({ queryKey: mediaKeys.all }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: mediaKeys.all });
+    },
   });
 }
 
@@ -26,7 +28,9 @@ export function useUpdateFolder(): UseMutationResult<
     meta: { invalidates: [mediaKeys.all], handlesErrors: true },
     mutationFn: ({ id, body }: { id: string; body: FolderPatchBody }) =>
       mediaRepo.folders.update(id, body),
-    onSuccess: () => qc.invalidateQueries({ queryKey: mediaKeys.all }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: mediaKeys.all });
+    },
   });
 }
 
@@ -36,6 +40,8 @@ export function useDeleteFolder(): UseMutationResult<void, Error, { id: string; 
     meta: { invalidates: [mediaKeys.all], handlesErrors: true },
     mutationFn: ({ id, version }: { id: string; version: number }) =>
       mediaRepo.folders.remove(id, version),
-    onSuccess: () => qc.invalidateQueries({ queryKey: mediaKeys.all }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: mediaKeys.all });
+    },
   });
 }

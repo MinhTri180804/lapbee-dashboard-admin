@@ -1,5 +1,6 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { http as mock, HttpResponse } from 'msw';
+import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createQueryClient } from '@/app/query-client';
 import { on } from '@/shared/api/events';
@@ -140,7 +141,9 @@ describe('useMediaDetail', () => {
 
 describe('useFolders', () => {
   it('returns the flat list and the tree', async () => {
-    server.use(mock.get(`${BASE}/media/folders`, () => HttpResponse.json({ items: folderFixtures })));
+    server.use(
+      mock.get(`${BASE}/media/folders`, () => HttpResponse.json({ items: folderFixtures })),
+    );
     const { result } = renderHook(() => useFolders(), { wrapper: createWrapper() });
     await waitFor(() => {
       expect(result.current.flat).toHaveLength(folderFixtures.length);
@@ -178,6 +181,59 @@ describe('useDeleteMedia', () => {
     await waitFor(() => {
       expect(listUrls).toHaveLength(2);
     });
+  });
+
+  it('drops the deleted image detail instead of refetching it', async () => {
+    serveList();
+    const detailGets: string[] = [];
+    server.use(
+      mock.get(`${BASE}/media/:id`, ({ params }) => {
+        const id = String(params.id);
+        detailGets.push(id);
+        return detailGets.length > 1
+          ? problem(404, 'NOT_FOUND')
+          : HttpResponse.json({ ...mediaItem(1), usages: [] });
+      }),
+      mock.delete(`${BASE}/media/:id`, () => new HttpResponse(null, { status: 204 })),
+    );
+    const toast = vi.fn();
+    offs.push(on('toast', toast));
+    // As the panel does: it stays open while the delete runs and closes in the caller's onSuccess.
+    const { result } = renderHook(
+      () => {
+        const [id, setId] = useState<string | null>('m-1');
+        return {
+          id,
+          detail: useMediaDetail(id),
+          del: useDeleteMedia(),
+          close: () => {
+            setId(null);
+          },
+        };
+      },
+      { wrapper: createWrapper(createQueryClient()) },
+    );
+    await waitFor(() => {
+      expect(result.current.detail.isSuccess).toBe(true);
+    });
+    await act(
+      () =>
+        new Promise<void>((resolve) => {
+          result.current.del.mutate(
+            { id: 'm-1', version: 3 },
+            {
+              onSuccess: () => {
+                result.current.close();
+                resolve();
+              },
+            },
+          );
+        }),
+    );
+    expect(result.current.id).toBeNull();
+    await new Promise((r) => setTimeout(r, 30));
+    expect(detailGets).toEqual(['m-1']);
+    expect(toast).not.toHaveBeenCalled();
   });
 
   it('still emits conflict on VERSION_CONFLICT', async () => {

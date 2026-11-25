@@ -100,9 +100,12 @@ function createUploadStore(qc: QueryClient) {
       pending.push(...jobs);
       set([
         ...items,
-        ...jobs.map(
-          (j): UploadItem => ({ key: j.key, name: j.file.name, progress: 0, status: 'queued' }),
-        ),
+        ...jobs.map((j): UploadItem => ({
+          key: j.key,
+          name: j.file.name,
+          progress: 0,
+          status: 'queued',
+        })),
       ]);
       pump();
     },

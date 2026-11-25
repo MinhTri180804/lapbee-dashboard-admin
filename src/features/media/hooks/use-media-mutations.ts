@@ -14,9 +14,10 @@ export function useUpdateMedia(): UseMutationResult<
   const qc = useQueryClient();
   return useMutation({
     meta: { invalidates: [mediaKeys.all], handlesErrors: true },
-    mutationFn: ({ id, body }: { id: string; body: MediaPatchBody }) =>
-      mediaRepo.update(id, body),
-    onSuccess: () => qc.invalidateQueries({ queryKey: mediaKeys.all }),
+    mutationFn: ({ id, body }: { id: string; body: MediaPatchBody }) => mediaRepo.update(id, body),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: mediaKeys.all });
+    },
   });
 }
 
@@ -24,9 +25,12 @@ export function useDeleteMedia(): UseMutationResult<void, Error, { id: string; v
   const qc = useQueryClient();
   return useMutation({
     meta: { invalidates: [mediaKeys.all], handlesErrors: true },
-    mutationFn: ({ id, version }: { id: string; version: number }) =>
-      mediaRepo.remove(id, version),
-    onSuccess: () => qc.invalidateQueries({ queryKey: mediaKeys.all }),
+    mutationFn: ({ id, version }: { id: string; version: number }) => mediaRepo.remove(id, version),
+    onSuccess: (_data, { id }) => {
+      // The open detail panel would refetch the deleted image and 404 into a toast.
+      qc.removeQueries({ queryKey: mediaKeys.detail(id), exact: true });
+      void qc.invalidateQueries({ queryKey: mediaKeys.all });
+    },
   });
 }
 
@@ -40,6 +44,8 @@ export function useMoveMedia(): UseMutationResult<
     meta: { invalidates: [mediaKeys.all] },
     mutationFn: ({ ids, folderId }: { ids: string[]; folderId: string | null }) =>
       mediaRepo.move(ids, folderId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: mediaKeys.all }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: mediaKeys.all });
+    },
   });
 }
