@@ -96,8 +96,12 @@ describe('MediaPicker', () => {
     let fileName = '';
     let contentType = '';
     const created = mediaItem(99);
+    let listCalls = 0;
     server.use(
-      mock.get(`${BASE}/media`, () => HttpResponse.json(mediaListFixture)),
+      mock.get(`${BASE}/media`, () => {
+        listCalls += 1;
+        return HttpResponse.json(mediaListFixture);
+      }),
       mock.post(`${BASE}/media`, async ({ request }) => {
         contentType = request.headers.get('content-type') ?? '';
         const f = (await request.formData()).get('file');
@@ -108,10 +112,14 @@ describe('MediaPicker', () => {
     const user = userEvent.setup();
     const { onPick } = setup(UPLOAD);
     await screen.findByAltText('anh-1.jpg');
+    const callsBefore = listCalls;
     const file = new File(['x'], 'moi.png', { type: 'image/png' });
     await user.upload(screen.getByLabelText('Tải ảnh lên'), file);
     await waitFor(() => {
       expect(onPick).toHaveBeenCalledWith(expect.objectContaining({ id: created.id }));
+    });
+    await waitFor(() => {
+      expect(listCalls).toBeGreaterThan(callsBefore);
     });
     expect(contentType).toContain('multipart/form-data; boundary=');
     expect(fileName).toBe('moi.png');
