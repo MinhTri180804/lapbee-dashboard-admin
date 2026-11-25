@@ -48,7 +48,7 @@ export function MediaPicker({ open, onClose, onPick, title = 'Chọn ảnh' }: M
     };
   }, [search]);
 
-  const { tree } = useFolders();
+  const { tree } = useFolders(open && canRead);
   // A search covers the whole library: it ignores the folder and shows none selected.
   const activeFolder = q ? null : folder;
   const list = useMediaList({ folder: activeFolder, q, used: null }, open && canRead);
@@ -117,7 +117,7 @@ export function MediaPicker({ open, onClose, onPick, title = 'Chọn ảnh' }: M
               <label
                 className={styles.upload}
                 data-disabled={!canUpload || undefined}
-                title={canUpload ? undefined : 'Bạn không có quyền tải ảnh lên thư viện.'}
+                title={canUpload ? undefined : 'Bạn không có quyền tải ảnh lên'}
               >
                 <Upload size={16} aria-hidden="true" />
                 <span>Tải ảnh lên</span>

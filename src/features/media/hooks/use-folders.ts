@@ -6,12 +6,16 @@ import { buildFolderTree, type FolderNode } from '../model/folder-tree';
 
 const NO_FOLDERS: FolderDto[] = [];
 
-export function useFolders(): {
+export function useFolders(enabled = true): {
   tree: FolderNode[];
   flat: FolderDto[];
   query: UseQueryResult<FolderDto[]>;
 } {
-  const query = useQuery({ queryKey: mediaKeys.folders, queryFn: () => mediaRepo.folders.list() });
+  const query = useQuery({
+    queryKey: mediaKeys.folders,
+    queryFn: () => mediaRepo.folders.list(),
+    enabled,
+  });
   const flat = query.data ?? NO_FOLDERS;
   const tree = useMemo(() => buildFolderTree(flat), [flat]);
   return { tree, flat, query };

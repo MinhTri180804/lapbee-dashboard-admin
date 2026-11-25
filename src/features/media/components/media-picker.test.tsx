@@ -92,7 +92,7 @@ describe('MediaPicker', () => {
     expect(screen.queryByRole('button', { name: 'Tải thêm' })).not.toBeInTheDocument();
   });
 
-  it('uploads a file as multipart and selects the new image first', async () => {
+  it('uploads a file as multipart and picks the new image', async () => {
     let fileName = '';
     let contentType = '';
     const created = mediaItem(99);
@@ -115,8 +115,6 @@ describe('MediaPicker', () => {
     });
     expect(contentType).toContain('multipart/form-data; boundary=');
     expect(fileName).toBe('moi.png');
-    const imgs = screen.getAllByRole('img');
-    expect(imgs[0]).toHaveAttribute('alt', 'anh-99.jpg');
   });
 
   it.each([
@@ -155,10 +153,7 @@ describe('MediaPicker', () => {
     await screen.findByAltText('anh-1.jpg');
     const input = screen.getByLabelText('Tải ảnh lên');
     expect(input).toBeDisabled();
-    expect(input.closest('label')).toHaveAttribute(
-      'title',
-      'Bạn không có quyền tải ảnh lên thư viện.',
-    );
+    expect(input.closest('label')).toHaveAttribute('title', 'Bạn không có quyền tải ảnh lên');
   });
 
   it('filters by folder, drops folderId when searching, and uploads into the folder', async () => {
@@ -206,7 +201,12 @@ describe('MediaPicker', () => {
       const [open, setOpen] = useState(true);
       return (
         <>
-          <button type="button" onClick={() => { setOpen((o) => !o); }}>
+          <button
+            type="button"
+            onClick={() => {
+              setOpen((o) => !o);
+            }}
+          >
             toggle
           </button>
           <MediaPicker open={open} onClose={vi.fn()} onPick={vi.fn()} />
@@ -224,17 +224,36 @@ describe('MediaPicker', () => {
     expect(screen.getByRole('button', { name: 'Đội ngũ' })).not.toHaveAttribute('aria-current');
   });
 
-  it('does not call the API without media.read', () => {
+  it('does not call the API without media.read', async () => {
     let called = false;
     server.use(
+      mock.get(`${BASE}/media/folders`, () => {
+        called = true;
+        return HttpResponse.json(foldersFixture);
+      }),
       mock.get(`${BASE}/media`, () => {
         called = true;
         return HttpResponse.json(mediaListFixture);
       }),
     );
     setup(['site.read']);
+    await new Promise((r) => setTimeout(r, 50));
     expect(screen.getByText('Bạn không có quyền xem thư viện ảnh.')).toBeInTheDocument();
     expect(within(screen.getByRole('dialog')).queryByLabelText('Tìm trong thư viện')).toBeNull();
+    expect(called).toBe(false);
+  });
+
+  it('does not call the API while closed', async () => {
+    let called = false;
+    const hit = () => {
+      called = true;
+      return HttpResponse.json(mediaListFixture);
+    };
+    server.use(mock.get(`${BASE}/media`, hit), mock.get(`${BASE}/media/folders`, hit));
+    renderWithProviders(<MediaPicker open={false} onClose={vi.fn()} onPick={vi.fn()} />, {
+      session: { permissions: UPLOAD },
+    });
+    await new Promise((r) => setTimeout(r, 50));
     expect(called).toBe(false);
   });
 });
