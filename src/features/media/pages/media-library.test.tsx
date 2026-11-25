@@ -10,6 +10,8 @@ import { MediaCard } from '../components/MediaCard';
 import { MediaLibraryPage } from './MediaLibraryPage';
 
 const BASE = 'http://localhost/admin/v1';
+/** Waits that include the 300 ms search debounce get more than the 1 s default under load. */
+const DEBOUNCE_WAIT = { timeout: 3000 };
 
 /** Serves folders and `GET /media`; records the query string of every list (perPage 40) call. */
 function serveLibrary({ total = 3 }: { total?: number } = {}) {
@@ -109,14 +111,14 @@ describe('MediaLibraryPage', () => {
     await user.type(screen.getByRole('searchbox', { name: 'Tìm trong thư viện' }), 'chan dung');
     await waitFor(() => {
       expect(new URLSearchParams(router.state.location.search).get('q')).toBe('chan dung');
-    });
+    }, DEBOUNCE_WAIT);
     expect(new URLSearchParams(router.state.location.search).has('folder')).toBe(false);
     expect(
       await screen.findByRole('heading', { level: 2, name: 'Kết quả tìm kiếm' }),
     ).toBeInTheDocument();
     await waitFor(() => {
       expect(last(lists).get('q')).toBe('chan dung');
-    });
+    }, DEBOUNCE_WAIT);
     expect(last(lists).has('folderId')).toBe(false);
     expect(folderButton('2024')).not.toHaveAttribute('aria-current');
 
@@ -141,13 +143,13 @@ describe('MediaLibraryPage', () => {
     await user.type(box, 'chan ');
     await waitFor(() => {
       expect(new URLSearchParams(router.state.location.search).get('q')).toBe('chan');
-    });
+    }, DEBOUNCE_WAIT);
     await screen.findByRole('heading', { level: 2, name: 'Kết quả tìm kiếm' });
     expect(box).toHaveValue('chan ');
     await user.type(box, 'dung');
     await waitFor(() => {
       expect(new URLSearchParams(router.state.location.search).get('q')).toBe('chan dung');
-    });
+    }, DEBOUNCE_WAIT);
   });
 
   it('goes Back from search results to the folder it started in', async () => {
@@ -157,12 +159,14 @@ describe('MediaLibraryPage', () => {
     await user.type(screen.getByRole('searchbox', { name: 'Tìm trong thư viện' }), 'chan');
     await waitFor(() => {
       expect(new URLSearchParams(router.state.location.search).get('q')).toBe('chan');
-    });
+    }, DEBOUNCE_WAIT);
     await router.navigate(-1);
     await waitFor(() => {
       expect(router.state.location.search).toBe(`?folder=${FOLDER.y2024}`);
-    });
-    expect(await screen.findByRole('heading', { level: 2, name: '2024' })).toBeInTheDocument();
+    }, DEBOUNCE_WAIT);
+    expect(
+      await screen.findByRole('heading', { level: 2, name: '2024' }, DEBOUNCE_WAIT),
+    ).toBeInTheDocument();
     expect(screen.getByRole('searchbox', { name: 'Tìm trong thư viện' })).toHaveValue('');
   });
 
@@ -250,7 +254,7 @@ describe('MediaLibraryPage', () => {
     await user.type(screen.getByRole('searchbox', { name: 'Tìm trong thư viện' }), 'chan');
     await waitFor(() => {
       expect(router.state.location.search).toBe('?q=chan');
-    });
+    }, DEBOUNCE_WAIT);
   });
 
   it('disables upload without media.upload', async () => {
