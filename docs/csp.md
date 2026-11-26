@@ -37,4 +37,4 @@ Khi backend dùng driver media `local`, URL ảnh là URL tuyệt đối dựng 
 ## Bổ sung ở giai đoạn 4
 
 - Khối embed của bài viết cần `frame-src https://www.youtube.com https://player.vimeo.com https://codepen.io https://codesandbox.io`.
-- Editor.js chèn thẻ `<style>` lúc chạy, trái với `style-src 'self'`. Spec §4.8 chọn nonce: `style-src 'self' 'nonce-<runtime>'`. Cách cấp nonce cho một SPA tĩnh (nonce phải đổi theo từng response) sẽ quyết định ở giai đoạn 4.
+- Editor.js chèn thẻ `<style>` lúc chạy, trái với `style-src 'self'`. Quyết định: thêm hash `'sha256-…'` của từng thẻ style vào `style-src`, không dùng nonce hay `'unsafe-inline'`. Lý do, hệ quả và việc phải làm khi nâng phiên bản: `docs/adr/0005-editorjs-style-csp.md`. Giá trị hash và test so khớp làm ở giai đoạn 4b.
