@@ -87,7 +87,16 @@ export function CategoriesPage() {
                 ? extra
                 : (categories?.find((c) => c.id === id)?.postCount ?? 0);
             void qc.invalidateQueries({ queryKey: categoryKeys.all });
+            void qc.invalidateQueries({ queryKey: ['posts'] });
             toast.show({ kind: 'error', title: `Còn ${String(count)} bài trong chuyên mục` });
+          } else if (isProblem(error, 'NOT_FOUND')) {
+            // Already deleted elsewhere: drop the row and close.
+            void qc.invalidateQueries({ queryKey: categoryKeys.all });
+            void qc.invalidateQueries({ queryKey: ['posts'] });
+            toast.show({
+              kind: 'error',
+              title: categoryErrorMessage(error.code) ?? messageFor(error),
+            });
           } else if (!isProblem(error, 'VERSION_CONFLICT')) {
             const message = isProblem(error) ? categoryErrorMessage(error.code) : null;
             toast.show({ kind: 'error', title: message ?? messageFor(error) });

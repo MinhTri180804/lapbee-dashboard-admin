@@ -127,7 +127,12 @@ describe('PostsPage', () => {
       within(filters())
         .getAllByRole('button')
         .map((b) => b.textContent),
-    ).toEqual(['Tất cả20', `${huongDan.name}14`, `${tinTuc.name}0`, `${khuyenMai.name}5`]);
+    ).toEqual([
+      'Tất cả20, 20 bài',
+      `${huongDan.name}14, 14 bài`,
+      `${tinTuc.name}0, 0 bài`,
+      `${khuyenMai.name}5, 5 bài`,
+    ]);
     expect(within(filters()).getByRole('button', { name: /Tất cả/ })).toHaveAttribute(
       'aria-pressed',
       'true',
@@ -248,7 +253,7 @@ describe('PostsPage', () => {
       within(filters())
         .getAllByRole('button')
         .map((b) => b.textContent),
-    ).toEqual(['Tất cả20']);
+    ).toEqual(['Tất cả20, 20 bài']);
     expect(screen.getAllByText('Hướng dẫn').length).toBeGreaterThan(0);
   });
 

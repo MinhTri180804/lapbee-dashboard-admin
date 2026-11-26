@@ -77,7 +77,7 @@ describe('Shell sidebar', () => {
     renderWithProviders(<Shell />, { route: '/site', session: { permissions: ['*'] } });
     const link = within(sidebar()).getByRole('link', { name: /Bài đăng/ });
     await waitFor(() => {
-      expect(link).toHaveTextContent('Bài đăng20');
+      expect(link).toHaveAccessibleName('Bài đăng, 20 bài');
     });
     expect(Object.fromEntries(postRequests[0] ?? [])).toEqual({ perPage: '1' });
   });

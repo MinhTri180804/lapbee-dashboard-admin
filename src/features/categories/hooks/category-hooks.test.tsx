@@ -45,6 +45,12 @@ describe('useCategories', () => {
   });
 });
 
+async function seededPostsClient() {
+  const qc = createQueryClient();
+  await qc.query({ queryKey: ['posts', 'list'], queryFn: () => Promise.resolve({ items: [] }) });
+  return qc;
+}
+
 describe('category mutations', () => {
   it('useDeleteCategory sends ?version= and reloads categories and posts', async () => {
     const deletes: string[] = [];
@@ -74,7 +80,6 @@ describe('category mutations', () => {
 
   it('invalidates the posts queries on success', async () => {
     server.use(
-      mock.get(`${BASE}/posts`, () => HttpResponse.json({ items: [] })),
       mock.delete(`${BASE}/categories/:id`, () => new HttpResponse(null, { status: 204 })),
     );
     const qc = createQueryClient();
@@ -84,6 +89,22 @@ describe('category mutations', () => {
     });
     const { result } = renderHook(() => useDeleteCategory(), { wrapper: createWrapper(qc) });
     await act(() => result.current.mutateAsync({ id: 'c1', version: 1 }));
+    expect(qc.getQueryState(['posts', 'list'])?.isInvalidated).toBe(true);
+  });
+
+  it('invalidates the posts queries on create', async () => {
+    server.use(mock.post(`${BASE}/categories`, () => HttpResponse.json(categoryFixtures[0])));
+    const qc = await seededPostsClient();
+    const { result } = renderHook(() => useCreateCategory(), { wrapper: createWrapper(qc) });
+    await act(() => result.current.mutateAsync({ name: 'Mới' }));
+    expect(qc.getQueryState(['posts', 'list'])?.isInvalidated).toBe(true);
+  });
+
+  it('invalidates the posts queries on update', async () => {
+    server.use(mock.patch(`${BASE}/categories/:id`, () => HttpResponse.json(categoryFixtures[1])));
+    const qc = await seededPostsClient();
+    const { result } = renderHook(() => useUpdateCategory(), { wrapper: createWrapper(qc) });
+    await act(() => result.current.mutateAsync({ id: 'c2', body: { version: 1, position: 0 } }));
     expect(qc.getQueryState(['posts', 'list'])?.isInvalidated).toBe(true);
   });
 

@@ -239,7 +239,7 @@ Danh sách, thêm, sửa, xoá, kéo thả `position`. Các mã lỗi: `CATEGORY
 
 ### 5.4 Bài viết
 
-- Danh sách gửi `cat`, `status`, `q`, `page`, `perPage=8`, giữ trong URL search params. Dải số liệu lấy `counts.byStatus` (đã xuất bản, bản nháp) và `total`. Tag chuyên mục lấy `counts.byCat`.
+- Danh sách gửi `cat`, `status`, `q`, `page`, `perPage=8`, giữ trong URL search params. Dải số liệu lấy `counts.byStatus.published`, `counts.byStatus.draft` và tổng hai số đó (`total` của response theo bộ lọc nên không dùng). Tag chuyên mục lấy `counts.byCat`.
 - Editor:
   - Editor.js với đúng 10 khối, chấm SEO ở client bằng `analyze(blocksToMarkdown(blocks))`;
   - slug tự sinh hoặc khoá tay (`slugLocked`); ảnh bìa và alt; meta, `kw`, `noindex`, `featured`, `date`; preview Google.

@@ -14,7 +14,7 @@ export type PostTableProps = {
 export function PostTable({ posts, empty }: PostTableProps) {
   return (
     <div className={styles.wrap}>
-      <table className={styles.table}>
+      <table className={styles.table} aria-label="Danh sách bài viết">
         <thead>
           <tr>
             <th scope="col" className={styles.th}>

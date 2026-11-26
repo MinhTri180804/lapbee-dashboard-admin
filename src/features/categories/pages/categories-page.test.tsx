@@ -310,6 +310,28 @@ describe('CategoriesPage', () => {
     );
   });
 
+  it('deleting a category that is already gone toasts, reloads and closes the confirm', async () => {
+    let lists = 0;
+    server.use(
+      mock.get(`${BASE}/categories`, () => {
+        lists += 1;
+        return HttpResponse.json({ items: lists === 1 ? categoryFixtures : [huongDan, khuyenMai] });
+      }),
+      mock.delete(`${BASE}/categories/:id`, () => problem(404, 'NOT_FOUND')),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole('button', { name: 'Xoá Tin tức' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Xoá chuyên mục Tin tức?' });
+    await user.click(within(dialog).getByRole('button', { name: 'Xoá' }));
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+    await waitFor(() => {
+      expect(rowNames()).toEqual(['Hướng dẫn', 'Khuyến mãi']);
+    });
+  });
+
   it('a failed reorder reloads the list so a deleted row disappears', async () => {
     let lists = 0;
     server.use(

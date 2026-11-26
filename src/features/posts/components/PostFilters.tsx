@@ -37,7 +37,14 @@ function Tag({
   return (
     <button type="button" className={styles.tag} aria-pressed={selected} onClick={onClick}>
       {label}
-      <span className={styles.count}>{count}</span>
+      {count === undefined ? null : (
+        <>
+          <span className={styles.count} aria-hidden="true">
+            {count}
+          </span>
+          <span className="lb-sr-only">{`, ${String(count)} bài`}</span>
+        </>
+      )}
     </button>
   );
 }

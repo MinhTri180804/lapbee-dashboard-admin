@@ -59,7 +59,6 @@ export function CategoryTable({
                 title={c.name}
                 disabled={!canManage}
                 disabledTitle={NO_MANAGE_TITLE}
-                busyTitle={BUSY_TITLE}
                 className={styles.row}
               >
                 {(handle, _dragging, busy) => (
@@ -72,7 +71,10 @@ export function CategoryTable({
                     <span className={styles.desc} title={c.description || undefined}>
                       {c.description}
                     </span>
-                    <span className={styles.num}>{c.postCount}</span>
+                    <span className={styles.num}>
+                      {c.postCount}
+                      <span className="lb-sr-only"> bài</span>
+                    </span>
                     <span className={styles.actions}>
                       <Button
                         variant="ghost"

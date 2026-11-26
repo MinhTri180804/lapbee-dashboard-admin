@@ -43,8 +43,8 @@ const ReorderBusy = createContext(false);
 
 /**
  * Keyboard and pointer reordering with an optimistic local order. The local order is
- * dropped once the request settles: on success the site cache already holds the new
- * order, on error the server order comes back. One reorder at a time: a second drag would
+ * dropped once the request settles: on success the caller has refreshed the list
+ * with the new order, on error the server order comes back. One reorder at a time: a second drag would
  * send an item version the first request has not updated yet.
  */
 export function SortableItems<T extends Sortable>({
@@ -125,7 +125,7 @@ export type SortableItemProps = {
   disabled: boolean;
   /** Tooltip shown on the disabled handle, e.g. "Bạn không có quyền …". */
   disabledTitle?: string | undefined;
-  /** Tooltip shown on the handle while a reorder is in flight, e.g. "Đang đổi thứ tự". */
+  /** Tooltip shown on the handle while a reorder is in flight, default "Đang đổi thứ tự". */
   busyTitle?: string | undefined;
   className?: string | undefined;
   /**
@@ -141,7 +141,7 @@ export function SortableItem({
   title,
   disabled,
   disabledTitle,
-  busyTitle,
+  busyTitle = 'Đang đổi thứ tự',
   className,
   children,
 }: SortableItemProps) {

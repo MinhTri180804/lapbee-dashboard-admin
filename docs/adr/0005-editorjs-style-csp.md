@@ -6,7 +6,7 @@
 Editor.js và các tool của nó chèn thẻ `<style>` vào `<head>` lúc chạy. Dashboard là SPA tĩnh do Caddy phục vụ, và `style-src 'self'` (xem `docs/csp.md`) chặn mọi thẻ `<style>` nội dòng, nên editor sẽ mất giao diện nếu không nới CSP.
 
 ## Các phương án
-1. Nonce: Caddy dùng templates để chèn `'nonce-<runtime>'` vào header và vào `index.html` mỗi response. Nhưng Editor.js không đọc nonce từ trang để gắn vào thẻ nó chèn, nên phải vá thư viện hoặc tool, và `index.html` không còn là file tĩnh.
+1. Nonce: Caddy dùng templates để chèn `'nonce-<runtime>'` vào header và vào `index.html` mỗi response. Editor.js core nhận `style.nonce` trong config, nhưng các tool tự chèn thẻ `<style>` riêng không kèm nonce nên vẫn phải vá tool, và nonce cần `index.html` sinh theo từng response sau Caddy nên không còn là file tĩnh.
 2. `'unsafe-inline'` cho `style-src`: đơn giản nhất nhưng bỏ hẳn lớp bảo vệ khỏi CSS inline cho cả ứng dụng.
 3. Hash: thêm `'sha256-…'` của từng thẻ style đã biết vào `style-src`. Giữ SPA tĩnh, không cần nonce, trình duyệt chỉ cho phép đúng nội dung đã liệt kê.
 

@@ -49,7 +49,15 @@ function ThemeToggle() {
 /** P4-9: the post total next to "Bài đăng", asked for only with `post.read`. */
 function PostsTotal() {
   const total = usePostsTotal(useCan('post.read'));
-  return total === undefined ? null : <span className={styles.count}>{total}</span>;
+  if (total === undefined) return null;
+  return (
+    <>
+      <span className={styles.count} aria-hidden="true">
+        {total}
+      </span>
+      <span className="lb-sr-only">{`, ${String(total)} bài`}</span>
+    </>
+  );
 }
 
 export function Sidebar() {

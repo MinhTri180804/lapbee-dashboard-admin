@@ -27,6 +27,8 @@ export const STATUS_LABEL: Record<PostStatus, string> = {
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_Q = 200;
+/** openapi caps `page`; anything above would be a 400, so it clamps and lands on the past-end state. */
+const MAX_PAGE = 100000;
 
 /** Reads the URL; values the API would reject (not a uuid, unknown status, bad page) are dropped. */
 export function paramsFromSearch(sp: URLSearchParams): PostListParams {
@@ -37,7 +39,7 @@ export function paramsFromSearch(sp: URLSearchParams): PostListParams {
     cat: UUID.test(cat) ? cat : null,
     status: status === 'draft' || status === 'published' ? status : null,
     q: (sp.get('q') ?? '').trim().slice(0, MAX_Q),
-    page: Number.isInteger(page) && page >= 1 ? page : 1,
+    page: Number.isInteger(page) && page >= 1 ? Math.min(page, MAX_PAGE) : 1,
   };
 }
 
