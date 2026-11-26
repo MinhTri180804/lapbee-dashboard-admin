@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Block } from './blocks';
 import { blocksToMarkdown } from './blocks-to-markdown';
 import { inlineToMarkdown } from './inline-html';
+import { analyze } from './seo';
 
 describe('inlineToMarkdown', () => {
   it('converts bold and italic', () => {
@@ -251,7 +252,93 @@ describe('blocksToMarkdown', () => {
     );
   });
 
+  it('keeps a br inside a header on the heading line', () => {
+    expect(blocksToMarkdown([{ type: 'header', data: { text: 'Pin<br>laptop', level: 2 } }])).toBe(
+      '## Pin laptop',
+    );
+  });
+
+  it('keeps a br inside a list item on the item line', () => {
+    expect(
+      blocksToMarkdown([
+        {
+          type: 'list',
+          data: {
+            style: 'unordered',
+            items: [
+              {
+                content: 'Một<br>hai',
+                meta: {},
+                items: [{ content: 'Ba<br>bốn', meta: {}, items: [] }],
+              },
+            ],
+          },
+        },
+      ]),
+    ).toBe('- Một hai\n  - Ba bốn');
+  });
+
+  it('quotes every line of a quote caption', () => {
+    expect(
+      blocksToMarkdown([{ type: 'quote', data: { text: 'Câu nói', caption: 'Ai đó<br>LAPBEE' } }]),
+    ).toBe('> Câu nói\n> — Ai đó\n> LAPBEE');
+  });
+
+  it('types image dimensions as required when the url is known', () => {
+    const file: Extract<Block, { type: 'image' }>['data']['file'] = {
+      mediaId: MEDIA_ID,
+      url: 'https://cdn.example/a.jpg',
+      width: 10,
+      height: 20,
+    };
+    // @ts-expect-error width and height come with a url (backend ImageView)
+    const missing: Extract<Block, { type: 'image' }>['data']['file'] = {
+      mediaId: MEDIA_ID,
+      url: 'https://cdn.example/a.jpg',
+    };
+    expect([file.url, missing.url]).toEqual([
+      'https://cdn.example/a.jpg',
+      'https://cdn.example/a.jpg',
+    ]);
+  });
+
   it('empty document', () => {
     expect(blocksToMarkdown([])).toBe('');
+  });
+});
+
+describe('blocksToMarkdown → analyze', () => {
+  it('counts headings, words and internal links of an editor document', () => {
+    const blocks: Block[] = [
+      { type: 'paragraph', data: { text: 'Pin laptop <b>chai</b> sau hai năm.' } },
+      { type: 'header', data: { text: 'Dấu<br>hiệu', level: 2 } },
+      {
+        type: 'list',
+        data: { style: 'unordered', items: [{ content: 'Sập<br>nguồn', meta: {}, items: [] }] },
+      },
+      { type: 'header', data: { text: 'Kiểm tra', level: 2 } },
+      { type: 'header', data: { text: 'Phụ', level: 3 } },
+      {
+        type: 'paragraph',
+        data: { text: 'Hãy <a href="/dat-lich">đặt lịch</a> ngay.' },
+      },
+    ];
+    const result = analyze({
+      title: '',
+      slug: '',
+      kw: '',
+      meta: '',
+      alt: '',
+      body: blocksToMarkdown(blocks),
+    });
+    const check = (label: string) => result.checks.find((c) => c.label === label);
+    expect(check('Tiêu đề phụ')?.detail).toBe('2 tiêu đề H2 · nên từ 2 trở lên.');
+    // 6 + 2 + 3 + 2 + 1 + 4: markup and link targets are not counted, but the design analyzer
+    // counts the list marker `-` as a word.
+    expect(result.wc).toBe(18);
+    expect(check('Liên kết nội bộ')).toMatchObject({
+      status: 'good',
+      detail: '1 liên kết tới trang LAPBEE.',
+    });
   });
 });

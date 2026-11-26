@@ -1,6 +1,11 @@
 import type { Block, ListData, ListItem, TableData } from './blocks';
 import { inlineToMarkdown as md } from './inline-html';
 
+/** Inline markdown on one line: a `<br>` would end a header or a list item early. */
+function oneLine(html: string): string {
+  return md(html).replace(/\n/g, ' ');
+}
+
 function listLines(style: ListData['style'], items: ListItem[], depth: number): string[] {
   const indent = '  '.repeat(depth);
   return items.flatMap((item) => {
@@ -12,7 +17,10 @@ function listLines(style: ListData['style'], items: ListItem[], depth: number): 
             ? '- [x] '
             : '- [ ] '
           : '- ';
-    return [`${indent}${marker}${md(item.content)}`, ...listLines(style, item.items, depth + 1)];
+    return [
+      `${indent}${marker}${oneLine(item.content)}`,
+      ...listLines(style, item.items, depth + 1),
+    ];
   });
 }
 
@@ -46,7 +54,7 @@ function blockToMarkdown(block: Block): string {
     case 'paragraph':
       return md(block.data.text);
     case 'header':
-      return `${'#'.repeat(block.data.level)} ${md(block.data.text)}`;
+      return `${'#'.repeat(block.data.level)} ${oneLine(block.data.text)}`;
     case 'list':
       return listLines(block.data.style, block.data.items, 0).join('\n');
     case 'code':
@@ -62,7 +70,7 @@ function blockToMarkdown(block: Block): string {
     case 'quote': {
       const caption = md(block.data.caption);
       const text = quoted(md(block.data.text));
-      return caption === '' ? text : `${text}\n> — ${caption}`;
+      return caption === '' ? text : `${text}\n${quoted(`— ${caption}`)}`;
     }
     case 'image':
       return `![${md(block.data.caption)}](${block.data.file.url ?? ''})`;

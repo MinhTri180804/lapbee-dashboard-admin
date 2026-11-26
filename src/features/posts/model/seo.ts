@@ -31,7 +31,11 @@ export type ScoreBand =
   | { label: 'Kém'; tone: 'danger' };
 
 export const strip = (s: string): string =>
-  (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd');
+  (s || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd');
 
 export const slugify = (s: string): string =>
   strip(s)

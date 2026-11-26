@@ -83,12 +83,13 @@ export type CalloutData = { variant: CalloutVariant; title: string; message: str
 export type QuoteData = { text: string; caption: string };
 
 /**
- * block-handlers.ts `image.toEditor`: the backend stores only `file.mediaId` and rebuilds `url`,
- * `width`, `height` from the library; `url` is null when the image is no longer there.
+ * block-handlers.ts `image.toEditor` (backend `ImageView`): the backend stores only `file.mediaId`
+ * and rebuilds `url`, `width`, `height` from the library; `url` is null (and there are no
+ * dimensions) when the image is no longer there.
  */
 export type ImageData = {
   file:
-    | { mediaId: string; url: string; width?: number; height?: number }
+    | { mediaId: string; url: string; width: number; height: number }
     | { mediaId: string; url: null };
   caption: string;
   withBorder: boolean;
