@@ -45,6 +45,9 @@
 .role {
   font-size: var(--fs-13);
   color: var(--fg-2);
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
 }
 .foot {
   display: flex;
