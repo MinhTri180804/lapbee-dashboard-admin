@@ -278,21 +278,54 @@ describe('CategoriesPage', () => {
     expect(await screen.findByText('Đã xoá chuyên mục')).toBeInTheDocument();
   });
 
-  it('CATEGORY_NOT_EMPTY toasts the cached post count', async () => {
-    mockList();
-    server.use(mock.delete(`${BASE}/categories/:id`, () => problem(409, 'CATEGORY_NOT_EMPTY')));
+  it('CATEGORY_NOT_EMPTY toasts the server post count and reloads the list', async () => {
+    let lists = 0;
+    server.use(
+      mock.get(`${BASE}/categories`, () => {
+        lists += 1;
+        return HttpResponse.json({
+          items:
+            lists === 1 ? categoryFixtures : [huongDan, { ...tinTuc, postCount: 3 }, khuyenMai],
+        });
+      }),
+      mock.delete(`${BASE}/categories/:id`, () =>
+        problem(409, 'CATEGORY_NOT_EMPTY', { postCount: 3 }),
+      ),
+    );
     const user = userEvent.setup();
-    const { queryClient } = renderPage();
+    renderPage();
     await user.click(await screen.findByRole('button', { name: 'Xoá Tin tức' }));
     const dialog = await screen.findByRole('dialog', { name: 'Xoá chuyên mục Tin tức?' });
-    // The list was stale: someone added posts meanwhile.
-    act(() => {
-      queryClient.setQueryData(['categories'], [huongDan, { ...tinTuc, postCount: 3 }, khuyenMai]);
-    });
     await user.click(within(dialog).getByRole('button', { name: 'Xoá' }));
     expect(await screen.findByText('Còn 3 bài trong chuyên mục')).toBeInTheDocument();
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Xoá Tin tức' })).toBeDisabled();
+    });
+    expect(screen.getByRole('button', { name: 'Xoá Tin tức' })).toHaveAttribute(
+      'title',
+      'Còn 3 bài trong chuyên mục',
+    );
+  });
+
+  it('a failed reorder reloads the list so a deleted row disappears', async () => {
+    let lists = 0;
+    server.use(
+      mock.get(`${BASE}/categories`, () => {
+        lists += 1;
+        return HttpResponse.json({
+          items: lists === 1 ? categoryFixtures : [tinTuc, khuyenMai],
+        });
+      }),
+      mock.patch(`${BASE}/categories/:id`, () => problem(404, 'NOT_FOUND')),
+    );
+    renderPage();
+    await screen.findByText('Hướng dẫn');
+    await dragDownOnce('Đổi thứ tự Hướng dẫn');
+    await waitFor(() => {
+      expect(rowNames()).toEqual(['Tin tức', 'Khuyến mãi']);
     });
   });
 
@@ -364,6 +397,12 @@ describe('CategoriesPage', () => {
     // The PATCH settled but the list still holds version 1: dragging stays refused.
     const handle = screen.getByRole('button', { name: 'Đổi thứ tự Hướng dẫn' });
     expect(handle).toHaveAttribute('aria-disabled', 'true');
+    expect(handle).toHaveAttribute('title', 'Đang đổi thứ tự');
+    for (const name of ['Sửa Tin tức', 'Xoá Tin tức']) {
+      const button = screen.getByRole('button', { name });
+      expect(button).toBeDisabled();
+      expect(button).toHaveAttribute('title', 'Đang đổi thứ tự');
+    }
     await dragDownOnce('Đổi thứ tự Hướng dẫn');
     expect(bodies).toHaveLength(1);
     expect(rowNames()).toEqual(['Tin tức', 'Hướng dẫn', 'Khuyến mãi']);

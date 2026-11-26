@@ -125,6 +125,8 @@ export type SortableItemProps = {
   disabled: boolean;
   /** Tooltip shown on the disabled handle, e.g. "Bạn không có quyền …". */
   disabledTitle?: string | undefined;
+  /** Tooltip shown on the handle while a reorder is in flight, e.g. "Đang đổi thứ tự". */
+  busyTitle?: string | undefined;
   className?: string | undefined;
   /**
    * Renders the item; `handle` is the drag handle button to place inside. `busy` is true while
@@ -139,6 +141,7 @@ export function SortableItem({
   title,
   disabled,
   disabledTitle,
+  busyTitle,
   className,
   children,
 }: SortableItemProps) {
@@ -165,7 +168,7 @@ export function SortableItem({
       {...attributes}
       {...listeners}
       aria-label={`Đổi thứ tự ${title}`}
-      title={disabled ? disabledTitle : undefined}
+      title={disabled ? disabledTitle : busy ? busyTitle : undefined}
       disabled={disabled}
       aria-disabled={disabled || busy || undefined}
     >

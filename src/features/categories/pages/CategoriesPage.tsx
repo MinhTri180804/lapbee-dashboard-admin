@@ -79,8 +79,14 @@ export function CategoriesPage() {
         },
         onError: (error) => {
           if (isProblem(error, 'CATEGORY_NOT_EMPTY')) {
-            // The list was stale; the count shown is the freshest one we hold.
-            const count = categories?.find((c) => c.id === id)?.postCount ?? 0;
+            // The list was stale: the server says how many posts remain, and the reload
+            // disables Xoá on the row.
+            const extra = error.extras.postCount;
+            const count =
+              typeof extra === 'number'
+                ? extra
+                : (categories?.find((c) => c.id === id)?.postCount ?? 0);
+            void qc.invalidateQueries({ queryKey: categoryKeys.all });
             toast.show({ kind: 'error', title: `Còn ${String(count)} bài trong chuyên mục` });
           } else if (!isProblem(error, 'VERSION_CONFLICT')) {
             const message = isProblem(error) ? categoryErrorMessage(error.code) : null;
@@ -104,6 +110,8 @@ export function CategoriesPage() {
       if (!isProblem(error, 'VERSION_CONFLICT')) {
         const message = isProblem(error) ? categoryErrorMessage(error.code) : null;
         toast.show({ kind: 'error', title: message ?? messageFor(error) });
+        // E.g. NOT_FOUND: the row was deleted elsewhere, so reload to drop it.
+        void qc.invalidateQueries({ queryKey: categoryKeys.all });
       }
       throw error;
     }

@@ -4,6 +4,7 @@ import type { CategoryDto } from '../model/adapters';
 import styles from './CategoryTable.module.css';
 
 export const NO_MANAGE_TITLE = 'Bạn không có quyền quản lý chuyên mục';
+const BUSY_TITLE = 'Đang đổi thứ tự';
 
 export type CategoryTableProps = {
   /** Server (position) order. */
@@ -15,8 +16,9 @@ export type CategoryTableProps = {
   onMove: (category: CategoryDto, position: number) => Promise<unknown>;
 };
 
-function deleteTitle(canManage: boolean, postCount: number): string | undefined {
+function deleteTitle(canManage: boolean, busy: boolean, postCount: number): string | undefined {
   if (!canManage) return NO_MANAGE_TITLE;
+  if (busy) return BUSY_TITLE;
   if (postCount > 0) return `Còn ${String(postCount)} bài trong chuyên mục`;
   return undefined;
 }
@@ -57,6 +59,7 @@ export function CategoryTable({
                 title={c.name}
                 disabled={!canManage}
                 disabledTitle={NO_MANAGE_TITLE}
+                busyTitle={BUSY_TITLE}
                 className={styles.row}
               >
                 {(handle, _dragging, busy) => (
@@ -76,7 +79,7 @@ export function CategoryTable({
                         size="sm"
                         aria-label={`Sửa ${c.name}`}
                         disabled={!canManage || busy}
-                        title={canManage ? undefined : NO_MANAGE_TITLE}
+                        title={!canManage ? NO_MANAGE_TITLE : busy ? BUSY_TITLE : undefined}
                         onClick={() => {
                           onEdit(c);
                         }}
@@ -88,7 +91,7 @@ export function CategoryTable({
                         size="sm"
                         aria-label={`Xoá ${c.name}`}
                         disabled={!canManage || busy || c.postCount > 0}
-                        title={deleteTitle(canManage, c.postCount)}
+                        title={deleteTitle(canManage, busy, c.postCount)}
                         onClick={() => {
                           onDelete(c);
                         }}
