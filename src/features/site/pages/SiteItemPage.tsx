@@ -1,12 +1,13 @@
 import { ArrowLeft } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState, type ReactElement, type ReactNode } from 'react';
-import { useForm, useWatch, type FieldValues, type UseFormReturn } from 'react-hook-form';
+import { useEffect, useState, type ReactElement, type ReactNode } from 'react';
+import { useForm, useWatch, type UseFormReturn } from 'react-hook-form';
 import { useNavigate } from 'react-router';
 import type { MediaThumb } from '@/features/media';
 import { isProblem } from '@/shared/api/errors';
 import { useCan } from '@/shared/auth/permissions';
 import { applyProblemToForm } from '@/shared/form/apply-problem-to-form';
 import { messageFor } from '@/shared/form/error-messages';
+import { useRebasingForm, type Server } from '@/shared/form/use-rebasing-form';
 import { Button, ConfirmDialog, PageHeader, Spinner, useToast } from '@/shared/ui';
 import { ItemShell } from '../components/ItemShell';
 import { ITEM_META } from '../components/labels';
@@ -135,17 +136,6 @@ function leafPaths(value: unknown, prefix = ''): string[] {
   return Object.entries(value).flatMap(([k, v]) => leafPaths(v, prefix ? `${prefix}.${k}` : k));
 }
 
-/** `next` with every top-level field the user changed (`current` vs `previous`) carried over. */
-function keepEdits<T extends FieldValues>(next: T, previous: T, current: T): T {
-  const out: T = { ...next };
-  for (const key of Object.keys(current) as (keyof T)[]) {
-    if (JSON.stringify(current[key]) !== JSON.stringify(previous[key])) out[key] = current[key];
-  }
-  return out;
-}
-
-type Baseline<T> = { initial: T; version: number };
-
 type ItemActions = {
   guard: ReactElement;
   /** The item was deleted elsewhere: show the not-found state. */
@@ -168,7 +158,7 @@ function useItemActions<K extends ItemKind>(
   form: UseFormReturn<ItemFormMap[K]>,
   item: { id: string; version: number; name: string } | null,
   /** Server form of the item now in the cache (moves the baseline after a conflict reload). */
-  current: { version: number; form: ItemFormMap[K] } | null,
+  current: Server<ItemFormMap[K]>,
 ): ItemActions {
   const meta = ITEM_META[kind];
   const back = `/site?tab=${meta.tab}`;
@@ -179,11 +169,6 @@ function useItemActions<K extends ItemKind>(
   const update = useUpdateItem(kind);
   const remove = useDeleteItem(kind);
 
-  const baseline = useRef<Baseline<ItemFormMap[K]> | null>(
-    item ? { initial: form.getValues(), version: item.version } : null,
-  );
-  /** Set after a version conflict: the reloaded item becomes the new baseline. */
-  const conflicted = useRef(false);
   const [leaving, setLeaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -196,52 +181,15 @@ function useItemActions<K extends ItemKind>(
     if (leaving) void navigate(back);
   }, [leaving, navigate, back]);
 
-  /** The item now in the cache, read by error handlers that run after later renders. */
-  const latest = useRef(current);
-  // Declared before the conflict effect below, so that effect reads this render's item.
-  useEffect(() => {
-    latest.current = current;
-  });
-  /** Moves the baseline to the cached item, keeping every field the user changed. */
-  const rebase = useCallback(
-    (next: { version: number; form: ItemFormMap[K] }) => {
-      const b = baseline.current;
-      if (!b) return;
-      const merged = keepEdits(next.form, b.initial, form.getValues());
-      baseline.current = { initial: next.form, version: next.version };
-      form.reset(next.form);
-      form.reset(merged, { keepDefaultValues: true });
-    },
-    [form],
-  );
-
   // After a conflict, the reload ("Tải lại") becomes the new baseline, or the not-found state
   // when the item is no longer in the draft.
-  const currentVersion = current?.version ?? null;
-  useEffect(() => {
-    const b = baseline.current;
-    const now = latest.current;
-    if (!b || !conflicted.current) return;
-    if (!now) {
-      conflicted.current = false;
+  const { baseline, onConflict } = useRebasingForm({
+    form,
+    server: current,
+    onGone: () => {
       setGone(true);
-    } else if (now.version !== b.version) {
-      conflicted.current = false;
-      rebase(now);
-    }
-  }, [currentVersion, rebase]);
-
-  /** On a 409: rebase now when the cache is already ahead, else wait for the reload. */
-  const onConflict = () => {
-    const b = baseline.current;
-    const now = latest.current;
-    if (b && now && now.version !== b.version) {
-      conflicted.current = false;
-      rebase(now);
-    } else {
-      conflicted.current = true;
-    }
-  };
+    },
+  });
 
   const leave = (title: string, body: string) => {
     toast.show({ kind: 'success', title, body });
@@ -264,8 +212,7 @@ function useItemActions<K extends ItemKind>(
 
   const submit = (values: ItemFormMap[K]) => {
     form.clearErrors('root');
-    const b = baseline.current;
-    if (!item || !b) {
+    if (!item) {
       const body: ItemCreateBodyMap[K] = itemCreateBody(kind, values);
       create.mutate(body, {
         onSuccess: () => {
@@ -275,7 +222,12 @@ function useItemActions<K extends ItemKind>(
       });
       return;
     }
-    const body: ItemPatchBodyMap[K] = itemPatchBody(kind, values, b.initial, b.version);
+    const body: ItemPatchBodyMap[K] = itemPatchBody(
+      kind,
+      values,
+      baseline.initial,
+      baseline.version,
+    );
     if (Object.keys(body).length === 1) {
       // Nothing changed: no request, no prompt.
       setLeaving(true);
@@ -293,10 +245,9 @@ function useItemActions<K extends ItemKind>(
   };
 
   const onDelete = () => {
-    const b = baseline.current;
-    if (!item || !b) return;
+    if (!item) return;
     remove.mutate(
-      { id: item.id, version: b.version },
+      { id: item.id, version: baseline.version },
       {
         onSuccess: () => {
           setDeleting(false);
@@ -373,7 +324,7 @@ function ServiceEditor({ site, item }: EditorProps<ServiceDto>) {
     'services',
     form,
     item ? { id: item.id, version: item.version, name: item.title } : null,
-    live ? { version: live.version, form: serviceToForm(live) } : null,
+    live ? { values: serviceToForm(live), version: live.version } : null,
   );
   const [icon, title, desc, time, visible] = useWatch({
     control: form.control,
@@ -417,7 +368,7 @@ function TeamEditor({ site, item }: EditorProps<TeamDto>) {
     'team',
     form,
     item ? { id: item.id, version: item.version, name: item.name } : null,
-    live ? { version: live.version, form: teamToForm(live) } : null,
+    live ? { values: teamToForm(live), version: live.version } : null,
   );
   const [media, onMedia] = useMediaUrls(
     item?.photo ? [[item.photo.id, { url: item.photo.url, thumbUrl: item.photo.thumbUrl }]] : [],
@@ -474,7 +425,7 @@ function TimelineEditor({ site, item }: EditorProps<TimelineDto>) {
     'timeline',
     form,
     item ? { id: item.id, version: item.version, name: item.title } : null,
-    live ? { version: live.version, form: timelineToForm(live) } : null,
+    live ? { values: timelineToForm(live), version: live.version } : null,
   );
   const [media, onMedia] = useMediaUrls(
     (item?.photos ?? []).flatMap((p) =>

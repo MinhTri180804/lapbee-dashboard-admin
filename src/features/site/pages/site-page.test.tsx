@@ -418,6 +418,61 @@ describe('SitePage', () => {
     expect(bodies[0]).toEqual({ version: 7, hours: '08:00 - 20:00 T7' });
   });
 
+  it('a dirty publish whose PATCH lands (v10) but whose publish conflicts leaves no rebase armed', async () => {
+    let current: Site = siteFixture;
+    server.use(mock.get(`${BASE}/site`, () => HttpResponse.json(current)));
+    const bodies: unknown[] = [];
+    server.use(
+      mock.patch(`${BASE}/site/settings`, async ({ request }) => {
+        bodies.push(await request.json());
+        current = {
+          ...siteFixture,
+          version: 10,
+          draft: {
+            ...siteFixture.draft,
+            settings: { ...siteFixture.draft.settings, hours: '08:00 - 20:00 T7' },
+          },
+        };
+        return HttpResponse.json(current);
+      }),
+      // An item changed elsewhere: the draftHash is stale.
+      mock.post(`${BASE}/site/publish`, () => problem(409, 'VERSION_CONFLICT')),
+    );
+    const user = userEvent.setup();
+    const { queryClient } = renderPage();
+    await loaded();
+    await user.type(screen.getByLabelText('Giờ làm việc'), ' T7');
+    const publish = screen.getByRole('button', { name: 'Lưu & xuất bản' });
+    await user.click(publish);
+    await waitFor(() => {
+      expect(bodies).toHaveLength(1);
+    });
+    await waitFor(() => {
+      expect(publish).toBeEnabled();
+    });
+    // The conflict reload ("Tải lại") brings v10, the version the PATCH already returned.
+    await act(() => queryClient.invalidateQueries({ queryKey: siteKeys.detail }));
+
+    await user.type(screen.getByLabelText('Giờ làm việc'), ' CN');
+    // Another admin then saves settings; with no rebase armed the dirty baseline stays v10.
+    current = {
+      ...siteFixture,
+      version: 11,
+      draft: {
+        ...siteFixture.draft,
+        settings: { ...siteFixture.draft.settings, email: 'new@lapbee.test' },
+      },
+    };
+    await act(() => queryClient.invalidateQueries({ queryKey: siteKeys.detail }));
+    expect(screen.getByLabelText('Email')).toHaveValue('hello@lapbee.test');
+
+    await user.click(screen.getByRole('button', { name: 'Lưu nháp' }));
+    await waitFor(() => {
+      expect(bodies).toHaveLength(2);
+    });
+    expect(bodies[1]).toEqual({ version: 10, hours: '08:00 - 20:00 T7 CN' });
+  });
+
   it('does not ask before leaving once the edits are saved', async () => {
     mockSite(cleanSite);
     server.use(

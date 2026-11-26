@@ -202,6 +202,25 @@ Theo ảnh thiết kế "Thư viện ảnh" bạn gửi ngày 23.11.2026:
 - Giới hạn 5 cấp: nút "Thư mục mới" bị vô hiệu khi folder đang chọn có `depth === 5`.
 - Upload dạng multipart (field `file`, `folderId`, `alt`) có thanh tiến trình. Lỗi `MEDIA_TOO_LARGE`, `MEDIA_UNSUPPORTED_TYPE`, `MEDIA_INVALID_IMAGE` hiện theo từng file.
 - `MediaPicker` (hộp thoại) dùng chung cho ảnh đội ngũ, ảnh hành trình, ảnh bìa và khối ảnh trong bài.
+- Quyết định giai đoạn 3:
+  - P3-1: trạng thái màn nằm trong URL `/media?folder=<id>|root&view=unused&q=…&id=<ảnh đang mở>`; không có `folder`, `view`, `q` là "Tất cả ảnh". Tải lại, chia sẻ link, nút Quay lại vẫn đúng chỗ.
+  - P3-2: ô tìm kiếm ghi "Tìm trong thư viện" (thiết kế ghi "Tìm trong thư mục"). Khi có `q`, tiêu đề vùng giữa là "Kết quả tìm kiếm" và bỏ chọn thư mục, vì backend bỏ qua `folderId` khi có `q`.
+  - P3-3: "Tải ảnh lên" nhận nhiều file, tải vào thư mục đang chọn (ở "Tất cả ảnh", "Chưa dùng" hoặc khi tìm kiếm thì vào gốc). Tải song song tối đa 2 file; danh sách tải hiện tiến trình và lỗi từng file, có nút "Đóng" khi xong. Giới hạn 10 MB, chỉ JPEG, PNG, WebP, AVIF.
+  - P3-4: panel chi tiết sửa tên và alt trong một form, nút "Lưu thay đổi" (không tự lưu); đổi thư mục bằng Select lưu ngay khi chọn; "Xoá ảnh" vô hiệu khi `usages` không rỗng, tooltip "Ảnh đang được dùng, không xoá được."
+  - P3-5: chọn nhiều ảnh bằng ô chọn trên thẻ; thanh chọn hiện "{n} ảnh đã chọn", "Chuyển tới…", "Bỏ chọn". Tối đa 100 ảnh một lần ("Chọn tối đa 100 ảnh một lần."). Không có xoá hàng loạt vì `POST /media/move` nhận 1–100 id còn xoá thì không có API hàng loạt.
+  - P3-6: "Đổi tên", "Chuyển tới…", "Xoá" thư mục hiện ở đầu vùng giữa khi đang chọn một thư mục, cạnh "Thư mục mới". Không có menu chuột phải hay kéo thả ảnh vào thư mục (phần mở rộng sau).
+  - P3-7: "Xoá" thư mục vô hiệu khi còn ảnh trực tiếp hoặc thư mục con, tooltip "Thư mục còn ảnh hoặc thư mục con."; vẫn xử lý `FOLDER_NOT_EMPTY` nếu dữ liệu cũ.
+  - P3-8: "Chuyển tới…" (ảnh hoặc thư mục) mở hộp thoại cây thư mục có mục "Gốc thư viện"; với thư mục, ẩn chính nó, thư mục con và đích làm cây vượt 5 cấp, để chặn trước `FOLDER_CYCLE`, `FOLDER_TOO_DEEP`.
+  - P3-9: lưới tải 40 ảnh mỗi trang, nút "Tải thêm" ở cuối (không cuộn vô hạn).
+- Quy tắc chốt khi triển khai giai đoạn 3:
+  - Mọi mutation media đặt `meta: { invalidates: [mediaKeys.all] }`; số đếm thư mục là tổng cộng dồn.
+  - Hộp thoại đổi tên, chuyển, xoá thư mục tự đóng khi gặp `VERSION_CONFLICT` (hộp thoại xung đột chung hiện lên); mở lại thì lấy version mới.
+  - `?id` bị bỏ khi đổi thư mục, chế độ xem hoặc từ khoá tìm kiếm (panel không hiện ảnh nằm ngoài lưới); link có sẵn `?id` khi tải trang vẫn mở được.
+  - "Thư mục mới" tạo trong thư mục đang chọn, nếu không chọn thì tạo ở gốc.
+  - Lưới ảnh dùng cột `auto-fill`. Dưới 1200px panel chi tiết chuyển thành Dialog rộng.
+  - `MediaPicker` tải một file vào thư mục đang chọn rồi tự chọn file đó; thiếu quyền thì nút tải vô hiệu kèm tooltip. Query thư mục chỉ chạy khi có quyền `media.read`.
+  - Form panel chi tiết dùng `useRebasingForm` (`shared/form`), cùng cơ chế rebase như form site.
+  - Câu chữ do FE tự viết (chưa có trong thiết kế), cần chủ dự án duyệt: "Bạn không có quyền sửa ảnh", "Bạn không có quyền xoá ảnh", "Bạn không có quyền chuyển ảnh", "Bạn không có quyền tải ảnh lên", "Bạn không có quyền tạo/sửa/xoá thư mục", "Tên ảnh tối đa 200 ký tự." và "Văn bản thay thế tối đa 300 ký tự.", "Tên thư mục tối đa 100 ký tự.", "Thư mục chỉ lồng tối đa 5 cấp."
 
 ### 5.3 Chuyên mục
 
@@ -244,7 +263,7 @@ Danh sách, thêm, sửa, xoá, kéo thả `position`. Các mã lỗi: `CATEGORY
 |---|---|---|
 | 1 | Nền tảng (Vite, TS strict, ESLint, Prettier, sinh type, token, font, theme), API client và toàn bộ phần xử lý tập trung (§4.4), phân quyền, shell, đăng nhập, `/setup-password`, tài khoản (đổi mật khẩu, phiên), ReauthDialog, ConflictDialog, bộ thành phần UI cơ bản | Đăng nhập thật với backend local, điều hướng trong shell, step-up chạy khi đổi mật khẩu |
 | 2 | Thông tin website: 5 tab, trang Thêm/Sửa mục kèm preview, kéo thả, xuất bản và hoàn tác, lịch sử. Ô chọn ảnh tạm dùng `MediaPicker` bản tối giản | Sửa và xuất bản site đầy đủ, có xử lý `VERSION_CONFLICT` |
-| 3 | Thư viện ảnh theo ảnh thiết kế, `MediaPicker` hoàn chỉnh, thay vào màn site | Upload, chuyển, đổi tên, xoá, quản lý folder 5 cấp |
+| 3 (xong, chờ PR) | Thư viện ảnh theo ảnh thiết kế, `MediaPicker` hoàn chỉnh, thay vào màn site | Upload, chuyển, đổi tên, xoá, quản lý folder 5 cấp |
 | 4 | Chuyên mục, danh sách bài, editor Editor.js (10 khối, tool tự viết), SEO client, CSP nonce | Tạo, lưu, xuất bản, gỡ bài; `POST_INVALID` gắn vào field |
 | 5 | Người dùng, vai trò, token API, audit log, webhook thất bại | Đủ phạm vi |
 

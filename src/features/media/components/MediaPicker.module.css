@@ -1,3 +1,37 @@
+.layout {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.side {
+  max-height: 60vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.all {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--fg-1);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.all[aria-current] {
+  background: var(--surface-sunken);
+  font-weight: 600;
+}
+
 .body {
   display: flex;
   flex-direction: column;
@@ -32,6 +66,15 @@
   cursor: pointer;
 }
 
+.upload[data-disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.upload[data-disabled] .file {
+  cursor: not-allowed;
+}
+
 .upload:focus-within {
   border-color: var(--brand);
 }
@@ -44,8 +87,10 @@
 }
 
 .grid {
+  max-height: 60vh;
+  overflow-y: auto;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: var(--space-2);
   margin: 0;
   padding: 0;
