@@ -1,0 +1,26 @@
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  margin: 0;
+  border-top: 1px solid var(--border-strong);
+  border-bottom: 1px solid var(--border-1);
+}
+.stat {
+  display: flex;
+  flex-direction: column-reverse;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: var(--space-5) var(--space-5) var(--space-5) 0;
+}
+.label {
+  color: var(--fg-2);
+  font-size: var(--fs-14);
+}
+.value {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-40);
+  font-weight: var(--fw-medium);
+  letter-spacing: -0.04em;
+  line-height: 1;
+}

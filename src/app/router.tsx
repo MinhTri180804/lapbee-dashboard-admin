@@ -6,6 +6,7 @@ import { useSession } from '@/shared/auth/session-store';
 import { AccountPage, LoginPage, SetupPasswordPage } from '@/features/auth';
 import { CategoriesPage } from '@/features/categories';
 import { MediaLibraryPage } from '@/features/media';
+import { PostsPage } from '@/features/posts';
 import { isItemKind, SiteHistoryPage, SiteItemPage, SitePage } from '@/features/site';
 import { Shell } from './layout/Shell';
 import { firstAllowedPath } from './nav';
@@ -59,7 +60,7 @@ export const routes: RouteObject[] = [
           { path: '/site/history', element: guarded('site.read', <SiteHistoryPage />) },
           { path: '/site/:kind/new', element: guarded('site.read', <SiteItemRoute />) },
           { path: '/site/:kind/:id', element: guarded('site.read', <SiteItemRoute />) },
-          { path: '/posts', element: guarded('post.read', <ComingSoonPage title="Bài đăng" />) },
+          { path: '/posts', element: guarded('post.read', <PostsPage />) },
           { path: '/categories', element: guarded('category.read', <CategoriesPage />) },
           { path: '/media', element: guarded('media.read', <MediaLibraryPage />) },
           { path: '/users', element: guarded('user.read', <ComingSoonPage title="Người dùng" />) },

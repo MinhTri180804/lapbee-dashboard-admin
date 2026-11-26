@@ -1,6 +1,8 @@
 import { ArrowUpRight, Moon, Sun } from 'lucide-react';
 import { useState } from 'react';
 import { NavLink } from 'react-router';
+import { usePostsTotal } from '@/features/posts';
+import { useCan } from '@/shared/auth/permissions';
 import { useSession } from '@/shared/auth/session-store';
 import {
   applyTheme,
@@ -44,6 +46,12 @@ function ThemeToggle() {
   );
 }
 
+/** P4-9: the post total next to "Bài đăng", asked for only with `post.read`. */
+function PostsTotal() {
+  const total = usePostsTotal(useCan('post.read'));
+  return total === undefined ? null : <span className={styles.count}>{total}</span>;
+}
+
 export function Sidebar() {
   const { permissions } = useSession();
   const groups = visibleNav(permissions);
@@ -71,6 +79,7 @@ export function Sidebar() {
                   >
                     <Icon size={18} className={styles.icon} aria-hidden="true" />
                     {label}
+                    {to === '/posts' && <PostsTotal />}
                   </NavLink>
                 </li>
               ))}
