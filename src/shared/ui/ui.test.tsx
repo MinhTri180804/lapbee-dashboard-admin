@@ -248,6 +248,25 @@ describe('Dialog', () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
+  it('ignores cancel/close events coming from a nested dialog', () => {
+    const outer = vi.fn();
+    const inner = vi.fn();
+    render(
+      <Dialog open title="Ngoài" onClose={outer}>
+        <Dialog open title="Trong" onClose={inner}>
+          x
+        </Dialog>
+      </Dialog>,
+    );
+    const innerEl = screen.getByRole('dialog', { name: 'Trong' });
+    act(() => {
+      innerEl.dispatchEvent(new Event('cancel', { bubbles: false, cancelable: true }));
+      innerEl.dispatchEvent(new Event('close', { bubbles: false }));
+    });
+    expect(inner).toHaveBeenCalled();
+    expect(outer).not.toHaveBeenCalled();
+  });
+
   it('renders footer', () => {
     render(
       <Dialog open title="T" onClose={() => undefined} footer={<button>Đồng ý</button>}>

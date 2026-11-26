@@ -48,11 +48,14 @@ export function Dialog({ open, title, onClose, children, footer, size = 'default
       data-size={size === 'wide' ? 'wide' : undefined}
       aria-labelledby={titleId}
       onCancel={(e) => {
+        // Events from a nested dialog bubble through the React tree; ignore them.
+        if (e.target !== e.currentTarget) return;
         // `open` prop stays the source of truth.
         e.preventDefault();
         onClose();
       }}
-      onClose={() => {
+      onClose={(e) => {
+        if (e.target !== e.currentTarget) return;
         // Browsers can close a dialog without a cancelable `cancel`; the prop still says open.
         if (open) onClose();
       }}
