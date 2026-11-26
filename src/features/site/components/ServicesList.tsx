@@ -3,7 +3,7 @@ import { Pencil, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useCan } from '@/shared/auth/permissions';
-import { Button, IconButton, Switch } from '@/shared/ui';
+import { Button, IconButton, SortableItem, SortableItems, Switch } from '@/shared/ui';
 import { useUpdateItem } from '../hooks/use-item-mutations';
 import { useSite } from '../hooks/use-site';
 import { SERVICE_ICONS } from '../model/service-icons';
@@ -11,7 +11,6 @@ import type { ServiceDto } from '../model/types';
 import { NO_UPDATE_TITLE } from './labels';
 import { Section } from './Section';
 import styles from './ServicesList.module.css';
-import { SortableItem, SortableItems } from './SortableItems';
 
 export function ServicesList() {
   const { data: site } = useSite();
@@ -80,6 +79,7 @@ export function ServicesList() {
                     id={s.id}
                     title={s.title}
                     disabled={!canUpdate}
+                    disabledTitle={NO_UPDATE_TITLE}
                     className={styles.row}
                   >
                     {(handle, _dragging, busy) => (

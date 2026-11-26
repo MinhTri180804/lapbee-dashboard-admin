@@ -34,3 +34,5 @@ export { Tabs, tabPanelProps } from './Tabs';
 export type { TabsProps } from './Tabs';
 export { TextArea } from './TextArea';
 export type { TextAreaProps } from './TextArea';
+export { SortableItem, SortableItems } from './SortableItems';
+export type { SortableItemProps, SortableItemsProps } from './SortableItems';

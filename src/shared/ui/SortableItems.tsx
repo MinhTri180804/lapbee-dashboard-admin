@@ -20,7 +20,6 @@ import { CSS } from '@dnd-kit/utilities';
 import { GripVertical } from 'lucide-react';
 import { createContext, use, useState, type CSSProperties, type ReactNode } from 'react';
 import styles from './SortableItems.module.css';
-import { NO_UPDATE_TITLE } from './labels';
 
 type Sortable = { id: string; version: number };
 
@@ -124,6 +123,8 @@ export type SortableItemProps = {
   title: string;
   /** No permission to reorder: the handle is disabled with a tooltip. */
   disabled: boolean;
+  /** Tooltip shown on the disabled handle, e.g. "Bạn không có quyền …". */
+  disabledTitle?: string | undefined;
   className?: string | undefined;
   /**
    * Renders the item; `handle` is the drag handle button to place inside. `busy` is true while
@@ -133,7 +134,14 @@ export type SortableItemProps = {
 };
 
 /** One sortable item; only the handle starts a drag, so the rest of the item stays clickable. */
-export function SortableItem({ id, title, disabled, className, children }: SortableItemProps) {
+export function SortableItem({
+  id,
+  title,
+  disabled,
+  disabledTitle,
+  className,
+  children,
+}: SortableItemProps) {
   // While busy the handle stays focusable (aria-disabled) so keyboard focus is not lost.
   const busy = use(ReorderBusy);
   const {
@@ -157,7 +165,7 @@ export function SortableItem({ id, title, disabled, className, children }: Sorta
       {...attributes}
       {...listeners}
       aria-label={`Đổi thứ tự ${title}`}
-      title={disabled ? NO_UPDATE_TITLE : undefined}
+      title={disabled ? disabledTitle : undefined}
       disabled={disabled}
       aria-disabled={disabled || busy || undefined}
     >
