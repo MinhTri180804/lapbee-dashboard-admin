@@ -1,0 +1,28 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.slug input {
+  font-family: var(--font-mono);
+}
+
+.description {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.description > :last-child {
+  align-self: flex-end;
+}
+
+.alert {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--fs-14);
+  color: var(--danger);
+  background: var(--danger-soft);
+  border-radius: var(--radius-md);
+}
