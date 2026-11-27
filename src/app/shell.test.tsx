@@ -2,10 +2,11 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http as mock, HttpResponse } from 'msw';
 import { createMemoryRouter, RouterProvider } from 'react-router';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { sessionStore } from '@/shared/auth/session-store';
 import { THEME_STORAGE_KEY } from '@/shared/theme/theme';
 import { meFixture } from '@/test/fixtures/auth';
+import { postListFixture } from '@/test/fixtures/posts';
 import { problem } from '@/test/msw/problem';
 import { server } from '@/test/msw/server';
 import { createTestQueryClient, renderWithProviders } from '@/test/render';
@@ -14,6 +15,19 @@ import { AppProviders } from './providers';
 import { routes } from './router';
 
 const BASE = 'http://localhost/admin/v1';
+
+/** The sidebar asks for the post total (P4-9); every post-listing request is recorded. */
+let postRequests: URLSearchParams[] = [];
+beforeEach(() => {
+  postRequests = [];
+  server.use(
+    mock.get(`${BASE}/posts`, ({ request }) => {
+      postRequests.push(new URL(request.url).searchParams);
+      return HttpResponse.json(postListFixture([], { perPage: 1 }));
+    }),
+    mock.get(`${BASE}/categories`, () => HttpResponse.json({ items: [] })),
+  );
+});
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -54,8 +68,25 @@ describe('Shell sidebar', () => {
     expect(within(nav).getByText('Nội dung')).toHaveClass('lb-label');
     expect(within(nav).queryByText('Quản trị')).not.toBeInTheDocument();
     const links = within(nav).getAllByRole('link');
-    expect(links.map((l) => l.textContent)).toEqual(['Bài đăng']);
+    expect(links).toHaveLength(1);
+    expect(links[0]).toHaveTextContent(/^Bài đăng/);
     expect(links[0]).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('shows the post total next to "Bài đăng"', async () => {
+    renderWithProviders(<Shell />, { route: '/site', session: { permissions: ['*'] } });
+    const link = within(sidebar()).getByRole('link', { name: /Bài đăng/ });
+    await waitFor(() => {
+      expect(link).toHaveAccessibleName('Bài đăng, 20 bài');
+    });
+    expect(Object.fromEntries(postRequests[0] ?? [])).toEqual({ perPage: '1' });
+  });
+
+  it('does not ask for the post total without post.read', async () => {
+    renderWithProviders(<Shell />, { route: '/site', session: { permissions: ['site.read'] } });
+    expect(within(sidebar()).getByRole('link', { name: 'Thông tin website' })).toBeInTheDocument();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(postRequests).toHaveLength(0);
   });
 
   it('logs out through POST /auth/logout and goes to /login', async () => {

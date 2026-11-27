@@ -20,7 +20,6 @@ import { CSS } from '@dnd-kit/utilities';
 import { GripVertical } from 'lucide-react';
 import { createContext, use, useState, type CSSProperties, type ReactNode } from 'react';
 import styles from './SortableItems.module.css';
-import { NO_UPDATE_TITLE } from './labels';
 
 type Sortable = { id: string; version: number };
 
@@ -44,8 +43,8 @@ const ReorderBusy = createContext(false);
 
 /**
  * Keyboard and pointer reordering with an optimistic local order. The local order is
- * dropped once the request settles: on success the site cache already holds the new
- * order, on error the server order comes back. One reorder at a time: a second drag would
+ * dropped once the request settles: on success the caller has refreshed the list
+ * with the new order, on error the server order comes back. One reorder at a time: a second drag would
  * send an item version the first request has not updated yet.
  */
 export function SortableItems<T extends Sortable>({
@@ -124,6 +123,10 @@ export type SortableItemProps = {
   title: string;
   /** No permission to reorder: the handle is disabled with a tooltip. */
   disabled: boolean;
+  /** Tooltip shown on the disabled handle, e.g. "Bạn không có quyền …". */
+  disabledTitle?: string | undefined;
+  /** Tooltip shown on the handle while a reorder is in flight, default "Đang đổi thứ tự". */
+  busyTitle?: string | undefined;
   className?: string | undefined;
   /**
    * Renders the item; `handle` is the drag handle button to place inside. `busy` is true while
@@ -133,7 +136,15 @@ export type SortableItemProps = {
 };
 
 /** One sortable item; only the handle starts a drag, so the rest of the item stays clickable. */
-export function SortableItem({ id, title, disabled, className, children }: SortableItemProps) {
+export function SortableItem({
+  id,
+  title,
+  disabled,
+  disabledTitle,
+  busyTitle = 'Đang đổi thứ tự',
+  className,
+  children,
+}: SortableItemProps) {
   // While busy the handle stays focusable (aria-disabled) so keyboard focus is not lost.
   const busy = use(ReorderBusy);
   const {
@@ -157,7 +168,7 @@ export function SortableItem({ id, title, disabled, className, children }: Sorta
       {...attributes}
       {...listeners}
       aria-label={`Đổi thứ tự ${title}`}
-      title={disabled ? NO_UPDATE_TITLE : undefined}
+      title={disabled ? disabledTitle : busy ? busyTitle : undefined}
       disabled={disabled}
       aria-disabled={disabled || busy || undefined}
     >

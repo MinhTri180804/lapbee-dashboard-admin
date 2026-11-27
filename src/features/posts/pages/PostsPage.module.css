@@ -1,0 +1,32 @@
+.page {
+  min-width: 0;
+}
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-4);
+}
+.pager {
+  display: flex;
+  gap: var(--space-2);
+}
+.error {
+  margin: 0;
+  color: var(--danger);
+}
+.emptyBody {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+}
+.emptyBody p {
+  margin: 0;
+}

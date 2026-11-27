@@ -102,6 +102,13 @@
   flex: none;
 }
 
+.count {
+  margin-left: auto;
+  color: var(--band-fg-2);
+  font-family: var(--font-mono);
+  font-size: var(--fs-12);
+}
+
 .footer {
   display: flex;
   flex-direction: column;

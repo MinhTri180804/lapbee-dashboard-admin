@@ -153,7 +153,7 @@ Production do Caddy gửi header. Repo cung cấp sẵn giá trị trong `docs/c
 ```
 default-src 'self';
 script-src 'self';
-style-src 'self' 'nonce-<runtime>';   (Editor.js chèn <style>, xem giai đoạn 4)
+style-src 'self' 'sha256-…';   (hash các <style> Editor.js chèn, xem ADR 0005)
 img-src 'self' data: blob: https://res.cloudinary.com;
 font-src 'self';
 connect-src 'self';
@@ -226,9 +226,20 @@ Theo ảnh thiết kế "Thư viện ảnh" bạn gửi ngày 23.11.2026:
 
 Danh sách, thêm, sửa, xoá, kéo thả `position`. Các mã lỗi: `CATEGORY_NAME_TAKEN` và `SLUG_TAKEN` gắn vào field, `CATEGORY_NOT_EMPTY` hiện câu "Còn {postCount} bài trong chuyên mục".
 
+- Quyết định giai đoạn 4a:
+  - P4-1: giai đoạn 4 chia hai PR: 4a (chuyên mục, danh sách bài, nền cho editor) và 4b (editor Editor.js, lưu, xuất bản, gỡ, panel SEO, preview Google, hash CSP, `frame-src` cho embed).
+  - P4-7: màn Chuyên mục theo §8.5: bảng có tay kéo, Tên, Đường dẫn, Mô tả, Số bài, nút Sửa và Xoá. Thêm và sửa bằng hộp thoại. Thêm mà để trống Đường dẫn thì không gửi `slug` (backend tự sinh); sửa thì Đường dẫn bắt buộc, vì `PATCH` không có cách quay lại tự sinh.
+  - P4-8: "Xoá" vô hiệu khi `postCount > 0`, tooltip "Còn {postCount} bài trong chuyên mục"; vẫn xử lý `CATEGORY_NOT_EMPTY` nếu dữ liệu cũ.
+  - P4-10: chỉ có tay kéo thả và bàn phím (như site), không có Select "Vị trí n / N".
+- Quy tắc chốt khi triển khai 4a:
+  - Hộp thoại thêm, sửa, xoá tự đóng khi gặp `VERSION_CONFLICT` (hộp thoại xung đột chung hiện lên); mở lại thì lấy version mới.
+  - Đổi thứ tự chờ danh sách tải lại xong rồi mới cho kéo tiếp (để lấy `version` mới); trong lúc đó các nút điều khiển bị vô hiệu với tooltip "Đang đổi thứ tự". Lỗi không phải conflict cũng tải lại danh sách.
+  - Toast `CATEGORY_NOT_EMPTY` lấy `postCount` từ body lỗi của server, không từ cache.
+  - Câu chữ do FE tự viết (chưa có trong thiết kế), cần chủ dự án duyệt: "Bạn không có quyền quản lý chuyên mục", "Chỉ dùng chữ thường không dấu, số và dấu gạch ngang.", "Để trống để tự tạo từ tên.", "Đang đổi thứ tự".
+
 ### 5.4 Bài viết
 
-- Danh sách gửi `cat`, `status`, `q`, `page`, `perPage=8`, giữ trong URL search params. Dải số liệu lấy `counts.byStatus` (đã xuất bản, bản nháp) và `total`. Tag chuyên mục lấy `counts.byCat`.
+- Danh sách gửi `cat`, `status`, `q`, `page`, `perPage=8`, giữ trong URL search params. Dải số liệu lấy `counts.byStatus.published`, `counts.byStatus.draft` và tổng hai số đó (`total` của response theo bộ lọc nên không dùng). Tag chuyên mục lấy `counts.byCat`.
 - Editor:
   - Editor.js với đúng 10 khối, chấm SEO ở client bằng `analyze(blocksToMarkdown(blocks))`;
   - slug tự sinh hoặc khoá tay (`slugLocked`); ảnh bìa và alt; meta, `kw`, `noindex`, `featured`, `date`; preview Google.
@@ -237,7 +248,18 @@ Danh sách, thêm, sửa, xoá, kéo thả `position`. Các mã lỗi: `CATEGORY
   - "Xuất bản" = `PATCH` (nếu có thay đổi) rồi `POST /publish` với `version` mới;
   - "Gỡ xuất bản" = `POST /unpublish`;
   - `POST_INVALID` gắn lỗi vào từng field qua `errors`.
-- Chi tiết Editor.js ở giai đoạn 4, ADR riêng.
+- Chi tiết Editor.js ở giai đoạn 4b, ADR 0005 (CSP) và ADR riêng nếu cần.
+- Quyết định giai đoạn 4a:
+  - P4-2: CSP cho `<style>` Editor.js chèn dùng hash `'sha256-…'` trong `style-src`, không nonce (ADR 0005). Giá trị hash và test so khớp làm ở 4b.
+  - P4-3: danh sách giữ trạng thái trong URL `/posts?cat=<uuid>&status=draft|published&q=…&page=n`; không có tham số là "Tất cả", trang 1.
+  - P4-4: dải số liệu 3 ô: "Đã xuất bản", "Bản nháp", "Tổng số bài" (tổng hai số trên). Bỏ "Đang lên lịch" và "Điểm SEO trung bình" của thiết kế.
+  - P4-5: bảng 4 cột: Bài viết (tiêu đề và `effectiveExcerpt`), Chuyên mục, Trạng thái, Ngày. Tiêu đề rỗng hiện "Bài chưa có tiêu đề"; chưa có chuyên mục hiện "Chưa có chuyên mục"; `date` rỗng hiện "—".
+  - P4-6: ở 4a "Viết bài mới" vô hiệu kèm tooltip "Sắp có", hàng trong bảng chưa mở được; 4b nối vào editor.
+  - P4-9: sidebar hiện số tổng bài cạnh "Bài đăng" (§4.7), lấy từ `GET /posts?perPage=1` (cộng `counts.byStatus`), chỉ gọi khi có `post.read`.
+- Quy tắc chốt khi triển khai 4a:
+  - Model chuyển khối Editor.js sang markdown và chấm SEO (`blocksToMarkdown`, `analyze`) đã có ở 4a, có test từ khối đến điểm; dạng dữ liệu khối ảnh và embed theo `toEditor` của backend.
+  - Xuống dòng `<br>` trong tiêu đề, danh sách, trích dẫn được giữ cấu trúc dòng khi chuyển sang markdown.
+  - Câu chữ do FE tự viết (chưa có trong thiết kế), cần chủ dự án duyệt: "Không có bài viết ở trang này." (trang vượt quá số trang), "Không tải được danh sách bài. Thử lại sau.", và mô tả trang "Bài viết trên website. Mỗi bài được chấm điểm SEO khi bạn viết."
 
 ### 5.5 Người dùng, vai trò, hệ thống
 
@@ -264,7 +286,8 @@ Danh sách, thêm, sửa, xoá, kéo thả `position`. Các mã lỗi: `CATEGORY
 | 1 | Nền tảng (Vite, TS strict, ESLint, Prettier, sinh type, token, font, theme), API client và toàn bộ phần xử lý tập trung (§4.4), phân quyền, shell, đăng nhập, `/setup-password`, tài khoản (đổi mật khẩu, phiên), ReauthDialog, ConflictDialog, bộ thành phần UI cơ bản | Đăng nhập thật với backend local, điều hướng trong shell, step-up chạy khi đổi mật khẩu |
 | 2 | Thông tin website: 5 tab, trang Thêm/Sửa mục kèm preview, kéo thả, xuất bản và hoàn tác, lịch sử. Ô chọn ảnh tạm dùng `MediaPicker` bản tối giản | Sửa và xuất bản site đầy đủ, có xử lý `VERSION_CONFLICT` |
 | 3 (xong, chờ PR) | Thư viện ảnh theo ảnh thiết kế, `MediaPicker` hoàn chỉnh, thay vào màn site | Upload, chuyển, đổi tên, xoá, quản lý folder 5 cấp |
-| 4 | Chuyên mục, danh sách bài, editor Editor.js (10 khối, tool tự viết), SEO client, CSP nonce | Tạo, lưu, xuất bản, gỡ bài; `POST_INVALID` gắn vào field |
+| 4a (xong, chờ PR) | Chuyên mục (thêm, sửa, xoá, kéo thả), danh sách bài có lọc, tìm kiếm, phân trang, số tổng ở sidebar; model khối và SEO client; ADR CSP | Quản lý chuyên mục đầy đủ, danh sách bài đúng với backend |
+| 4b | Editor Editor.js (10 khối, tool tự viết), lưu, xuất bản, gỡ, panel SEO, preview Google, CSP hash, `frame-src` cho embed | Tạo, lưu, xuất bản, gỡ bài; `POST_INVALID` gắn vào field |
 | 5 | Người dùng, vai trò, token API, audit log, webhook thất bại | Đủ phạm vi |
 
 ## 8. Phác thảo các màn chưa có thiết kế (chờ duyệt)

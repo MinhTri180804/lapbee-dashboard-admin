@@ -1,0 +1,98 @@
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-4);
+}
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 34px;
+  padding: 0 var(--space-3);
+  border: var(--hairline);
+  border-radius: var(--radius-pill);
+  background: var(--surface-card);
+  color: var(--fg-1);
+  font: inherit;
+  font-size: var(--fs-14);
+  cursor: pointer;
+  transition:
+    background var(--dur-fast),
+    border-color var(--dur-fast);
+}
+.tag:hover {
+  border-color: var(--border-strong);
+}
+.tag:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+.tag[aria-pressed='true'] {
+  border-color: var(--surface-inverse);
+  background: var(--surface-inverse);
+  color: var(--fg-inverse-1);
+}
+.count {
+  font-family: var(--font-mono);
+  font-size: var(--fs-12);
+  color: inherit;
+  opacity: 0.7;
+}
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+.search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 240px;
+  height: var(--control-h-md);
+  padding: 0 var(--space-3);
+  border: var(--hairline);
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+  color: var(--fg-2);
+}
+.search:focus-within {
+  border-color: var(--brand);
+  box-shadow: var(--shadow-focus);
+}
+.searchInput {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--fg-1);
+  font: inherit;
+  font-size: var(--fs-14);
+}
+.status {
+  width: 180px;
+}
+/* The design has no visible label next to the status filter; it stays for screen readers. */
+.status label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+@media (max-width: 900px) {
+  .tools,
+  .search,
+  .status {
+    width: 100%;
+  }
+}

@@ -2,12 +2,11 @@ import { rectSortingStrategy } from '@dnd-kit/sortable';
 import { UserPlus } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { useCan } from '@/shared/auth/permissions';
-import { Badge, Button, Card } from '@/shared/ui';
+import { Badge, Button, Card, SortableItem, SortableItems } from '@/shared/ui';
 import { useUpdateItem } from '../hooks/use-item-mutations';
 import { useSite } from '../hooks/use-site';
 import { NO_UPDATE_TITLE } from './labels';
 import { Section } from './Section';
-import { SortableItem, SortableItems } from './SortableItems';
 import styles from './TeamGrid.module.css';
 
 export function TeamGrid() {
@@ -54,6 +53,7 @@ export function TeamGrid() {
                   id={m.id}
                   title={m.name}
                   disabled={!canUpdate}
+                  disabledTitle={NO_UPDATE_TITLE}
                   className={styles.item}
                 >
                   {(handle) => (

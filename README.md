@@ -1,6 +1,6 @@
 # LAPBEE Dashboard
 
-Dashboard quản trị cho website LAPBEE: đăng nhập, quản lý phiên, và (ở các giai đoạn sau) quản lý nội dung site, thư viện ảnh, bài viết, người dùng và vai trò. Đây là SPA React gọi API `/admin/v1` của backend NestJS. Giai đoạn 1 gồm nền tảng, đăng nhập, thiết lập mật khẩu, khung giao diện và trang tài khoản. Giai đoạn 2 thêm quản lý nội dung site (`/site`). Giai đoạn 3 thêm thư viện ảnh (`/media`).
+Dashboard quản trị cho website LAPBEE: đăng nhập, quản lý phiên, và (ở các giai đoạn sau) quản lý nội dung site, thư viện ảnh, bài viết, người dùng và vai trò. Đây là SPA React gọi API `/admin/v1` của backend NestJS. Giai đoạn 1 gồm nền tảng, đăng nhập, thiết lập mật khẩu, khung giao diện và trang tài khoản. Giai đoạn 2 thêm quản lý nội dung site (`/site`). Giai đoạn 3 thêm thư viện ảnh (`/media`). Giai đoạn 4a thêm chuyên mục (`/categories`) và danh sách bài viết (`/posts`).
 
 ## Yêu cầu
 
@@ -49,9 +49,11 @@ Xem `docs/adr/0004-generated-dto-types.md`.
 ## Cấu trúc
 
 - `src/app/`: router, providers, query client, khung giao diện (layout), các trang cấp app, hộp thoại đăng nhập lại và xung đột.
-- `src/features/`: mỗi tính năng một thư mục (hiện có `auth`, `site` gồm thông tin chung, trang chủ, dịch vụ, đội ngũ, hành trình, lịch sử xuất bản, và `media`).
+- `src/features/`: mỗi tính năng một thư mục (hiện có `auth`, `site` gồm thông tin chung, trang chủ, dịch vụ, đội ngũ, hành trình, lịch sử xuất bản, `media`, `categories`, `posts`).
   - `media/pages`: `MediaLibraryPage` (`/media`, trạng thái trong URL). `media/components`: cây thư mục, lưới và thẻ ảnh, panel chi tiết, thanh chọn, hộp thoại chuyển, thao tác thư mục, danh sách tải lên, `MediaPicker`. `media/hooks`: danh sách, chi tiết, thư mục, mutation, hàng đợi tải lên. `media/model`: adapter DTO và dựng cây thư mục (số đếm cộng dồn, kiểm tra độ sâu).
-- `src/shared/`: code dùng chung: `api` (axios, lỗi, CSRF), `auth`, `form` (xử lý lỗi `ProblemDetails` vào form, `use-rebasing-form.ts` giữ thay đổi chưa lưu khi version nền đổi), `lib`, `styles`, `theme`, `ui`.
+  - `categories`: `pages/CategoriesPage` (`/categories`), `components` (bảng có tay kéo, hộp thoại thêm và sửa), `hooks` (danh sách, mutation, đổi thứ tự), `model` (adapter DTO).
+  - `posts`: `pages/PostsPage` (`/posts`, lọc và trang trong URL), `components` (dải số liệu, bộ lọc, bảng), `hooks` (danh sách, số tổng cho sidebar), `model` (adapter, kiểu 10 khối Editor.js `blocks.ts`, `blocks-to-markdown.ts`, `inline-html.ts`, `seo.ts`). Editor làm ở giai đoạn 4b.
+- `src/shared/`: code dùng chung: `api` (axios, lỗi, CSRF), `auth`, `form` (xử lý lỗi `ProblemDetails` vào form, `use-rebasing-form.ts` giữ thay đổi chưa lưu khi version nền đổi), `lib`, `styles`, `theme`, `ui` (gồm `SortableItems`, danh sách kéo thả dùng cho site và chuyên mục).
 - `src/test/`: tiện ích test, MSW handlers, fixtures.
 - `scripts/`: `gen-api.mjs`, `check-api.mjs`.
 - `docs/`: tài liệu thiết kế.
